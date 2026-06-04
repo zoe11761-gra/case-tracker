@@ -49,10 +49,14 @@
   .btn-add-case:hover { background:var(--accent-dim); }
 
   /* ── MAIN ── */
-  .main-wrapper { max-width:1500px; margin:0 auto; padding:28px 32px 60px; }
+  .main-wrapper { max-width:1500px; margin:0 auto; padding:0 32px 60px; }
 
   /* ── DASHBOARD ── */
-  .dashboard { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .dashboard-sticky {
+    position:sticky; top:56px; z-index:90;
+    background:var(--bg); padding:20px 0 16px; margin-bottom:0;
+  }
+  .dashboard { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
   .dash-card {
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius2);
     padding:20px 22px; position:relative; overflow:hidden; transition:border-color .18s;
@@ -120,7 +124,7 @@
   .case-inline .c-title { color:var(--text2); }
 
   .empty-row td { text-align:center; padding:48px; color:var(--text3); font-size:15px; }
-  .td-accident { font-family:'DM Mono',monospace; font-size:15px; color:var(--text3); }
+  .td-accident { font-family:'DM Mono',monospace; font-size:15px; color:var(--blue); }
 
   /* ═══════════════════════════════════════
      VIEW PANEL (詳情面板 — 不是編輯)
@@ -374,7 +378,8 @@
   .vp-log-row:last-child { border-bottom:none; }
   .vp-log-date-col {
     font-family:'DM Mono',monospace; font-size:13px; color:var(--accent);
-    min-width:96px; max-width:96px; padding-top:2px; flex-shrink:0; font-weight:500;
+    min-width:96px; max-width:96px; flex-shrink:0; font-weight:500;
+    display:flex; flex-direction:column; gap:6px; padding-top:2px;
   }
   .vp-log-content-col { flex:1; display:flex; flex-direction:column; gap:8px; }
   .vp-log-body {
@@ -466,6 +471,7 @@
 <div class="main-wrapper">
 
   <!-- DASHBOARD -->
+  <div class="dashboard-sticky">
   <div class="dashboard">
     <div class="dash-card">
       <div class="dash-label">新契約・加保</div>
@@ -484,9 +490,10 @@
       <div class="dash-row"><div class="dash-count" id="cnt4">0</div><div class="dash-unit">件待辦</div></div>
     </div>
   </div>
+  </div>
 
   <!-- PENDING TAB -->
-  <div id="tab-pending">
+  <div id="tab-pending" style="padding-top:20px;">
     <div class="section-header">
       <div class="section-title">待辦案件</div>
       <div class="section-count" id="pending-count">0 件</div>
@@ -498,6 +505,7 @@
             <th class="td-check">結案</th>
             <th class="sortable" onclick="sortBy('category')">分類 <i class="sort-icon" id="sort-category">↕</i></th>
             <th class="sortable" onclick="sortBy('name')">待辦事項 <i class="sort-icon" id="sort-name">↕</i></th>
+            <th class="sortable" onclick="sortBy('handleDate')">預計處理 <i class="sort-icon" id="sort-handleDate">↕</i></th>
             <th class="sortable" onclick="sortBy('priority')">優先級 <i class="sort-icon" id="sort-priority">↕</i></th>
             <th class="sortable" onclick="sortBy('deadline')">截止日期 <i class="sort-icon" id="sort-deadline">↕</i></th>
             <th class="sortable" onclick="sortBy('accident')">事故日期 <i class="sort-icon" id="sort-accident">↕</i></th>
@@ -509,7 +517,7 @@
   </div>
 
   <!-- CLOSED TAB -->
-  <div id="tab-closed" style="display:none;">
+  <div id="tab-closed" style="display:none;padding-top:20px;">
     <div class="section-header">
       <div class="section-title">已結案</div>
       <div class="section-count" id="closed-count">0 件</div>
@@ -521,6 +529,7 @@
             <th class="td-check">重啟</th>
             <th>分類</th>
             <th>待辦事項</th>
+            <th>預計處理</th>
             <th>優先級</th>
             <th>截止日期</th>
             <th class="sortable" onclick="sortBy('closedAt')">結案日期 <i class="sort-icon" id="sort-closedAt">↕</i></th>
@@ -633,7 +642,11 @@
       </div>
     </div>
 
-    <div class="form-row">
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="form-group">
+        <label class="form-label">預計處理時間（選填）</label>
+        <input class="form-input" type="date" id="f-handle-date">
+      </div>
       <div class="form-group">
         <label class="form-label">優先級</label>
         <select class="form-select" id="f-priority">
@@ -728,7 +741,7 @@ function esc(s) { if(!s)return''; return s.replace(/&/g,'&amp;').replace(/</g,'&
 function isUrgent(d) {
   if(!d) return false;
   const diff=(new Date(d)-new Date())/86400000;
-  return diff>=0 && diff<=7;
+  return diff>=0 && diff<=30;
 }
 function addMonth(d) {
   if(!d) return '';
@@ -776,9 +789,10 @@ function renderPending() {
       </td>
       <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
       <td>${caseInline(c)}</td>
+      <td>${c.handleDate?`<span class="deadline-normal">${c.handleDate}</span>`:'<span class="deadline-empty">—</span>'}</td>
       <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
       <td>${c.deadline?`<span class="${isUrgent(c.deadline)?'deadline-urgent':'deadline-normal'}">${c.deadline}${isUrgent(c.deadline)?' ⚠':''}</span>`:'<span class="deadline-empty">—</span>'}</td>
-      <td class="td-accident">${c.accident||(c.category==4?'—':'')}</td>
+      <td class="td-accident">${c.accident||(c.category==4?'<span style=\"color:var(--blue)\"">—</span>':'')}</td>
     </tr>`).join('');
 }
 
@@ -800,6 +814,7 @@ function renderClosed() {
       <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
       <td>${caseInline(c)}</td>
       <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
+      <td class="deadline-normal">${c.handleDate||'—'}</td>
       <td class="deadline-normal">${c.deadline||'—'}</td>
       <td class="deadline-normal">${c.closedAt||'—'}</td>
     </tr>`).join('');
@@ -900,7 +915,10 @@ function renderViewLogs(c) {
   el.innerHTML=logs.map((log,i)=>{
     const realIdx=(c.logs||[]).findIndex(x=>x===log||(x.dt===log.dt&&(x.html||x.text)===(log.html||log.text)));
     return `<div class="vp-log-row" id="vplog-${i}">
-      <div class="vp-log-date-col">${log.dt||''}</div>
+      <div class="vp-log-date-col">
+        <div>${log.dt||''}</div>
+        <button class="vp-log-edit-btn" onclick="vpToggleEditLog(${i})">✎ 編輯</button>
+      </div>
       <div class="vp-log-content-col">
         <div class="vp-log-body" id="vplog-body-${i}">${renderLogHtml(esc(log.html||log.text||''))}</div>
         <div class="vp-log-edit-row" id="vplog-edit-${i}" style="display:none;">
@@ -920,9 +938,7 @@ function renderViewLogs(c) {
             <button class="btn-sm accent" onclick="vpSaveEditLog(${i})">儲存</button>
           </div>
         </div>
-        <div class="vp-log-meta-row">
-          <button class="vp-log-edit-btn" onclick="vpToggleEditLog(${i})">✎ 編輯</button>
-        </div>
+
       </div>
     </div>`;
   }).join('');
@@ -1018,6 +1034,7 @@ function openEditModal(id) {
   document.getElementById('f-title').value=c?.title||'';
   document.getElementById('f-priority').value=c?.priority||'urgent';
   document.getElementById('f-deadline').value=c?.deadline||'';
+  document.getElementById('f-handle-date').value=c?.handleDate||'';
   document.getElementById('f-accident').value=c?.accident||'';
   document.getElementById('f-insurer').value=c?.insurer||'';
   document.getElementById('f-claim-name').value=c?.claimName||'';
@@ -1027,6 +1044,7 @@ function openEditModal(id) {
   document.getElementById('log-text').value='';
   updateCatDot(); onCatChange(); renderEditLogs(); renderImgs();
   document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>{ document.querySelector('.modal').scrollTop=0; },10);
 }
 
 function closeEditModal() {
@@ -1119,6 +1137,7 @@ function saveCase() {
     title:document.getElementById('f-title').value.trim(),
     priority:document.getElementById('f-priority').value,
     deadline:document.getElementById('f-deadline').value,
+    handleDate:document.getElementById('f-handle-date').value,
     accident:document.getElementById('f-accident').value,
     insurer:document.getElementById('f-insurer').value.trim(),
     claimName:document.getElementById('f-claim-name').value.trim(),
