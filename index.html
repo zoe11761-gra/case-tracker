@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>草草・案件追蹤明細表</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #16181c;
+    --surface: #1e2128;
+    --surface2: #252931;
+    --surface3: #2d3139;
+    --border: #333842;
+    --border2: #404550;
+    --text: #e8e4dd;
+    --text2: #9a9590;
+    --text3: #6b6760;
+    --accent: #c8a96e;
+    --accent2: #e8c98e;
+    --accent-dim: rgba(200,169,110,0.12);
+    --red: #e05555;
+    --red-dim: rgba(224,85,85,0.12);
+    --green: #5aaa7a;
+    --blue: #5a8fcc;
+    --blue-dim: rgba(90,143,204,0.12);
+    --cat1: #c8a96e;
+    --cat2: #5a8fcc;
+    --cat3: #5aaa7a;
+    --cat4: #d4804a;
+    --radius: 8px;
+    --radius2: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans TC',sans-serif; font-size:14px; min-height:100vh; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:0 32px; display:flex; align-items:center; gap:24px;
+    height:56px; position:sticky; top:0; z-index:100;
+  }
+  .topbar-logo { font-family:'Noto Serif TC',serif; font-size:16px; font-weight:700; color:var(--accent); letter-spacing:.04em; white-space:nowrap; }
+  .topbar-tabs { display:flex; gap:4px; margin-left:auto; }
+  .tab-btn { padding:6px 18px; border-radius:6px; border:none; background:transparent; color:var(--text2); font-family:'Noto Sans TC',sans-serif; font-size:13px; cursor:pointer; transition:all .18s; }
+  .tab-btn:hover { background:var(--surface3); color:var(--text); }
+  .tab-btn.active { background:var(--accent-dim); color:var(--accent); }
+  .btn-add-case { padding:7px 18px; border-radius:6px; border:1px solid var(--accent); background:transparent; color:var(--accent); font-family:'Noto Sans TC',sans-serif; font-size:13px; cursor:pointer; transition:all .18s; white-space:nowrap; }
+  .btn-add-case:hover { background:var(--accent-dim); }
+
+  /* ── MAIN ── */
+  .main-wrapper { max-width:1500px; margin:0 auto; padding:28px 32px 60px; }
+
+  /* ── DASHBOARD ── */
+  .dashboard { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .dash-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius2);
+    padding:20px 22px; position:relative; overflow:hidden; transition:border-color .18s;
+  }
+  .dash-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .dash-card:nth-child(1)::before { background:var(--cat1); }
+  .dash-card:nth-child(2)::before { background:var(--cat2); }
+  .dash-card:nth-child(3)::before { background:var(--cat3); }
+  .dash-card:nth-child(4)::before { background:var(--cat4); }
+  .dash-card:hover { border-color:var(--border2); }
+  .dash-label { font-size:11px; color:var(--text3); letter-spacing:.08em; margin-bottom:12px; text-transform:uppercase; }
+  .dash-row { display:flex; align-items:baseline; gap:8px; }
+  .dash-count { font-family:'DM Mono',monospace; font-size:40px; font-weight:500; line-height:1; }
+  .dash-card:nth-child(1) .dash-count { color:var(--cat1); }
+  .dash-card:nth-child(2) .dash-count { color:var(--cat2); }
+  .dash-card:nth-child(3) .dash-count { color:var(--cat3); }
+  .dash-card:nth-child(4) .dash-count { color:var(--cat4); }
+  .dash-unit { font-size:13px; color:var(--text3); white-space:nowrap; }
+
+  /* ── SECTION HEADER ── */
+  .section-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .section-title { font-family:'Noto Serif TC',serif; font-size:15px; font-weight:600; color:var(--text); }
+  .section-count { font-family:'DM Mono',monospace; font-size:11px; background:var(--surface3); border:1px solid var(--border); color:var(--text2); padding:2px 8px; border-radius:20px; }
+
+  /* ── TABLE — 主頁文字全體 +3pt (原13px→16px) ── */
+  .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius2); overflow:hidden; }
+  .case-table { width:100%; border-collapse:collapse; }
+  .case-table thead th {
+    background:var(--surface2); padding:12px 16px; text-align:left;
+    font-size:13px; font-weight:500; color:var(--text3);
+    letter-spacing:.06em; text-transform:uppercase;
+    border-bottom:1px solid var(--border); white-space:nowrap; user-select:none;
+  }
+  .case-table thead th.sortable { cursor:pointer; }
+  .case-table thead th.sortable:hover { color:var(--text2); }
+  .sort-icon { margin-left:4px; opacity:.5; font-style:normal; }
+  .case-table tbody tr { border-bottom:1px solid var(--border); transition:background .12s; cursor:pointer; }
+  .case-table tbody tr:last-child { border-bottom:none; }
+  .case-table tbody tr:hover { background:var(--surface2); }
+  .case-table tbody tr.closed-row { opacity:.55; }
+  /* td font-size bumped to 16px */
+  .case-table td { padding:14px 16px; vertical-align:middle; font-size:16px; }
+
+  .close-check { width:18px; height:18px; accent-color:var(--green); cursor:pointer; }
+  .td-check { text-align:center; width:44px; }
+
+  .cat-badge { display:inline-block; font-size:12px; padding:4px 10px; border-radius:20px; white-space:nowrap; font-weight:500; }
+  .cat-1 { background:rgba(200,169,110,.12); color:var(--cat1); border:1px solid rgba(200,169,110,.2); }
+  .cat-2 { background:rgba(90,143,204,.12); color:var(--cat2); border:1px solid rgba(90,143,204,.2); }
+  .cat-3 { background:rgba(90,170,122,.10); color:var(--cat3); border:1px solid rgba(90,170,122,.2); }
+  .cat-4 { background:rgba(212,128,74,.12); color:var(--cat4); border:1px solid rgba(212,128,74,.2); }
+
+  .pri-badge { display:inline-block; font-size:12px; padding:4px 10px; border-radius:4px; white-space:nowrap; }
+  .pri-urgent { background:var(--red-dim); color:var(--red); }
+  .pri-track { background:var(--blue-dim); color:var(--blue); }
+  .pri-record { background:var(--surface3); color:var(--text3); }
+
+  .deadline-urgent { color:var(--red); font-weight:500; font-family:'DM Mono',monospace; font-size:15px; }
+  .deadline-normal { color:var(--text2); font-family:'DM Mono',monospace; font-size:15px; }
+  .deadline-empty { color:var(--text3); font-size:15px; }
+
+  .case-inline { font-size:16px; color:var(--text); }
+  .case-inline .c-name { font-weight:600; color:var(--text); }
+  .case-inline .c-sep { color:var(--text3); margin:0 6px; }
+  .case-inline .c-title { color:var(--text2); }
+
+  .empty-row td { text-align:center; padding:48px; color:var(--text3); font-size:15px; }
+  .td-accident { font-family:'DM Mono',monospace; font-size:15px; color:var(--text3); }
+
+  /* ═══════════════════════════════════════
+     VIEW PANEL (詳情面板 — 不是編輯)
+  ═══════════════════════════════════════ */
+  .view-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(10,12,16,.78); z-index:200;
+    align-items:center; justify-content:center;
+    backdrop-filter:blur(4px);
+  }
+  .view-overlay.open { display:flex; }
+
+  .view-panel {
+    background:var(--surface);
+    border:1px solid var(--border2);
+    border-radius:16px;
+    width:min(1060px, 96vw);
+    max-height:92vh;
+    overflow-y:auto;
+    box-shadow:0 24px 80px rgba(0,0,0,.55);
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* panel header */
+  .vp-header {
+    display:flex; align-items:center; gap:12px;
+    padding:22px 32px 18px;
+    border-bottom:1px solid var(--border);
+    position:sticky; top:0; background:var(--surface); z-index:5;
+  }
+  .vp-cat-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+  .vp-title { font-family:'Noto Serif TC',serif; font-size:19px; font-weight:700; color:var(--text); flex:1; }
+  .vp-close { background:var(--surface3); border:none; color:var(--text2); width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .vp-close:hover { background:var(--red-dim); color:var(--red); }
+
+  .vp-body { padding:28px 32px; display:flex; flex-direction:column; gap:28px; }
+
+  /* ── INFO CARD ── */
+  .vp-info-card {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:var(--radius2);
+    padding:24px 28px;
+    position:relative;
+  }
+  .vp-info-card-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:20px;
+  }
+  .vp-info-card-label { font-size:11px; color:var(--text3); letter-spacing:.1em; text-transform:uppercase; }
+  .btn-edit-case {
+    padding:6px 16px; border-radius:6px;
+    border:1px solid var(--border2);
+    background:var(--surface3); color:var(--text2);
+    font-family:'Noto Sans TC',sans-serif; font-size:13px;
+    cursor:pointer; transition:all .15s;
+    display:flex; align-items:center; gap:6px;
+  }
+  .btn-edit-case:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* info grid */
+  .vp-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px 32px; }
+  .vp-field { display:flex; flex-direction:column; gap:5px; }
+  .vp-field-label { font-size:11px; color:var(--text3); letter-spacing:.08em; text-transform:uppercase; }
+  .vp-field-value { font-size:16px; color:var(--text); line-height:1.5; }
+  .vp-field-value.mono { font-family:'DM Mono',monospace; font-size:15px; }
+  .vp-field-value.urgent { color:var(--red); font-weight:600; }
+  .vp-field-value.empty { color:var(--text3); font-size:14px; }
+  .vp-field-value .cat-badge { font-size:13px; }
+  .vp-field-value .pri-badge { font-size:13px; }
+
+  /* ── PROGRESS SECTION ── */
+  .vp-progress-card {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:var(--radius2);
+    padding:24px 28px;
+  }
+  .vp-progress-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:20px;
+  }
+  .vp-progress-title { font-size:11px; color:var(--text3); letter-spacing:.1em; text-transform:uppercase; }
+
+  /* timeline list */
+  .vp-log-list { display:flex; flex-direction:column; gap:0; }
+  .vp-log-item {
+    display:flex; gap:0;
+    position:relative;
+  }
+  /* vertical line */
+  .vp-log-item:not(:last-child) .vp-log-line::after {
+    content:''; position:absolute;
+    left:50%; top:20px; bottom:-14px;
+    width:1px; background:var(--border2);
+    transform:translateX(-50%);
+  }
+  .vp-log-left {
+    display:flex; flex-direction:column; align-items:center;
+    width:20px; flex-shrink:0; margin-right:18px; position:relative;
+    padding-top:4px;
+  }
+  .vp-log-dot {
+    width:10px; height:10px; border-radius:50%;
+    background:var(--accent); border:2px solid var(--surface2);
+    flex-shrink:0; z-index:1; position:relative;
+  }
+  .vp-log-line { position:absolute; left:50%; top:14px; bottom:0; width:1px; background:var(--border2); transform:translateX(-50%); }
+  .vp-log-item:last-child .vp-log-line { display:none; }
+  .vp-log-right {
+    flex:1; padding-bottom:20px;
+  }
+  .vp-log-date {
+    font-family:'DM Mono',monospace; font-size:13px; color:var(--accent);
+    margin-bottom:6px; font-weight:500;
+  }
+  .vp-log-body {
+    font-size:16px; color:var(--text); line-height:1.75;
+    white-space:pre-wrap; word-break:break-word;
+    background:var(--surface3); border:1px solid var(--border);
+    border-radius:8px; padding:13px 16px;
+  }
+  .vp-log-body .clr-red { color:#e86060; }
+  .vp-log-body .clr-blue { color:#6aaae8; }
+  .vp-empty-log { color:var(--text3); font-size:14px; padding:8px 0; }
+
+  /* ── ADD LOG inline ── */
+  .vp-add-log { margin-top:4px; }
+  .vp-add-toggle {
+    display:flex; align-items:center; gap:8px;
+    padding:9px 16px; border-radius:var(--radius);
+    border:1px dashed var(--border2); background:transparent;
+    color:var(--text3); font-family:'Noto Sans TC',sans-serif;
+    font-size:13px; cursor:pointer; transition:all .15s; width:100%;
+    justify-content:center;
+  }
+  .vp-add-toggle:hover { border-color:var(--accent); color:var(--accent); }
+  .vp-add-form {
+    display:none; margin-top:12px;
+    background:var(--surface3); border:1px solid var(--border2);
+    border-radius:var(--radius2); padding:18px;
+  }
+  .vp-add-form.open { display:block; }
+  .vp-add-top { display:grid; grid-template-columns:130px 1fr; gap:10px; align-items:start; margin-bottom:10px; }
+  .vp-add-toolbar { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+  .toolbar-label { font-size:12px; color:var(--text3); margin-right:2px; }
+  .clr-btn { padding:3px 10px; border-radius:4px; border:1px solid var(--border2); background:var(--surface); cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; }
+  .clr-btn.red { color:#e86060; }
+  .clr-btn.red:hover { background:rgba(232,96,96,.18); border-color:#e86060; }
+  .clr-btn.blue { color:#6aaae8; }
+  .clr-btn.blue:hover { background:rgba(106,170,232,.18); border-color:#6aaae8; }
+  .clr-btn.clr-clear { color:var(--text2); font-weight:400; }
+  .clr-btn.clr-clear:hover { color:var(--text); }
+  .vp-add-actions { display:flex; justify-content:flex-end; gap:8px; }
+
+  /* ── IMAGES in view panel ── */
+  .vp-img-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .vp-img-thumb { aspect-ratio:1; border-radius:8px; overflow:hidden; border:1px solid var(--border); cursor:pointer; transition:opacity .15s; }
+  .vp-img-thumb:hover { opacity:.85; }
+  .vp-img-thumb img { width:100%; height:100%; object-fit:cover; }
+
+  /* ═══════════════════════════════════════
+     EDIT MODAL (編輯視窗)
+  ═══════════════════════════════════════ */
+  .modal-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(10,12,16,.82); z-index:300;
+    align-items:center; justify-content:center;
+    backdrop-filter:blur(4px);
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background:var(--surface); border:1px solid var(--border2); border-radius:16px;
+    width:min(740px,96vw); max-height:92vh; overflow-y:auto;
+    box-shadow:0 24px 80px rgba(0,0,0,.6);
+  }
+  .modal-header { display:flex; align-items:center; gap:12px; padding:22px 28px 18px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--surface); z-index:5; }
+  .modal-cat-indicator { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .modal-title { font-family:'Noto Serif TC',serif; font-size:18px; font-weight:700; color:var(--text); flex:1; }
+  .modal-close { background:var(--surface3); border:none; color:var(--text2); width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .modal-close:hover { background:var(--red-dim); color:var(--red); }
+
+  .modal-body { padding:24px 28px; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .form-row.single { grid-template-columns:1fr; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-label { font-size:12px; color:var(--text3); letter-spacing:.06em; text-transform:uppercase; }
+  .form-input,.form-select,.form-textarea {
+    background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px 13px; color:var(--text); font-family:'Noto Sans TC',sans-serif;
+    font-size:14px; outline:none; transition:border-color .15s;
+  }
+  .form-input:focus,.form-select:focus,.form-textarea:focus { border-color:var(--accent); }
+  .form-select { cursor:pointer; }
+  .form-textarea { resize:vertical; min-height:80px; line-height:1.65; }
+
+  .modal-section { margin-top:22px; padding-top:18px; border-top:1px solid var(--border); }
+  .modal-section-title { font-size:12px; color:var(--text3); letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .modal-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* log in edit modal */
+  .edit-log-list { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; max-height:220px; overflow-y:auto; padding-right:4px; }
+  .edit-log-entry { display:flex; gap:12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:11px 13px; position:relative; }
+  .edit-log-entry::before { content:''; position:absolute; left:0; top:10%; bottom:10%; width:3px; background:var(--accent); border-radius:0 3px 3px 0; }
+  .edit-log-date { font-family:'DM Mono',monospace; font-size:12px; color:var(--accent); white-space:nowrap; min-width:72px; padding-top:1px; }
+  .edit-log-content { font-size:13px; color:var(--text); line-height:1.65; flex:1; white-space:pre-wrap; }
+  .edit-log-content .clr-red { color:#e86060; }
+  .edit-log-content .clr-blue { color:#6aaae8; }
+  .log-delete { background:none; border:none; color:var(--text3); cursor:pointer; padding:0 2px; font-size:14px; transition:color .15s; flex-shrink:0; }
+  .log-delete:hover { color:var(--red); }
+
+  .add-log-area { display:flex; flex-direction:column; gap:8px; }
+  .add-log-top { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:start; }
+  .add-log-toolbar { display:flex; align-items:center; gap:6px; padding:4px 0; }
+  .btn-add-log { background:var(--accent-dim); border:1px solid rgba(200,169,110,.3); color:var(--accent); padding:8px 16px; border-radius:var(--radius); cursor:pointer; font-size:13px; white-space:nowrap; transition:all .15s; }
+  .btn-add-log:hover { background:rgba(200,169,110,.22); }
+
+  /* img in edit modal */
+  .img-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+  .img-thumb { aspect-ratio:1; border-radius:6px; overflow:hidden; border:1px solid var(--border); position:relative; background:var(--surface2); }
+  .img-thumb img { width:100%; height:100%; object-fit:cover; }
+  .img-thumb .del-img { position:absolute; top:4px; right:4px; background:rgba(16,18,22,.8); border:none; color:var(--text2); width:22px; height:22px; border-radius:4px; cursor:pointer; font-size:12px; display:none; align-items:center; justify-content:center; }
+  .img-thumb:hover .del-img { display:flex; }
+  .upload-btn { background:var(--surface2); border:1px dashed var(--border2); border-radius:6px; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; color:var(--text3); font-size:11px; gap:4px; transition:all .15s; }
+  .upload-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .upload-btn .up-icon { font-size:20px; }
+
+  .modal-footer { display:flex; gap:10px; padding:16px 28px 24px; border-top:1px solid var(--border); justify-content:flex-end; }
+  .btn-cancel { background:var(--surface3); border:1px solid var(--border); color:var(--text2); padding:9px 22px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-family:'Noto Sans TC',sans-serif; transition:all .15s; }
+  .btn-cancel:hover { color:var(--text); border-color:var(--border2); }
+  .btn-save { background:var(--accent); border:none; color:#1a1200; padding:9px 26px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-weight:600; font-family:'Noto Sans TC',sans-serif; transition:all .15s; }
+  .btn-save:hover { background:var(--accent2); }
+  .btn-delete { background:var(--red-dim); border:1px solid rgba(224,85,85,.2); color:var(--red); padding:9px 22px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-family:'Noto Sans TC',sans-serif; transition:all .15s; margin-right:auto; }
+  .btn-delete:hover { background:rgba(224,85,85,.22); }
+
+  .btn-sm { padding:7px 14px; border-radius:6px; font-size:13px; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .15s; border:1px solid var(--border2); background:var(--surface); color:var(--text2); }
+  .btn-sm:hover { color:var(--text); border-color:var(--border2); background:var(--surface3); }
+  .btn-sm.accent { background:var(--accent-dim); border-color:rgba(200,169,110,.3); color:var(--accent); }
+  .btn-sm.accent:hover { background:rgba(200,169,110,.22); }
+
+  .crash-fields { display:none; }
+  .crash-fields.visible { display:contents; }
+
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">草草・案件追蹤明細表</div>
+  <div class="topbar-tabs">
+    <button class="tab-btn active" onclick="switchTab('pending')">待辦案件</button>
+    <button class="tab-btn" onclick="switchTab('closed')">已結案</button>
+  </div>
+  <button class="btn-add-case" onclick="openEditModal(null)">＋ 新增案件</button>
+</div>
+
+<div class="main-wrapper">
+
+  <!-- DASHBOARD -->
+  <div class="dashboard">
+    <div class="dash-card">
+      <div class="dash-label">新契約・加保</div>
+      <div class="dash-row"><div class="dash-count" id="cnt1">0</div><div class="dash-unit">件待辦</div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-label">契約變更・退保</div>
+      <div class="dash-row"><div class="dash-count" id="cnt2">0</div><div class="dash-unit">件待辦</div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-label">壽險 / 產險理賠</div>
+      <div class="dash-row"><div class="dash-count" id="cnt3">0</div><div class="dash-unit">件待辦</div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-label">車禍追蹤</div>
+      <div class="dash-row"><div class="dash-count" id="cnt4">0</div><div class="dash-unit">件待辦</div></div>
+    </div>
+  </div>
+
+  <!-- PENDING TAB -->
+  <div id="tab-pending">
+    <div class="section-header">
+      <div class="section-title">待辦案件</div>
+      <div class="section-count" id="pending-count">0 件</div>
+    </div>
+    <div class="table-wrap">
+      <table class="case-table">
+        <thead>
+          <tr>
+            <th class="td-check">結案</th>
+            <th class="sortable" onclick="sortBy('category')">分類 <i class="sort-icon" id="sort-category">↕</i></th>
+            <th class="sortable" onclick="sortBy('name')">待辦事項 <i class="sort-icon" id="sort-name">↕</i></th>
+            <th class="sortable" onclick="sortBy('priority')">優先級 <i class="sort-icon" id="sort-priority">↕</i></th>
+            <th class="sortable" onclick="sortBy('deadline')">截止日期 <i class="sort-icon" id="sort-deadline">↕</i></th>
+            <th class="sortable" onclick="sortBy('accident')">事故日期 <i class="sort-icon" id="sort-accident">↕</i></th>
+          </tr>
+        </thead>
+        <tbody id="pending-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CLOSED TAB -->
+  <div id="tab-closed" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">已結案</div>
+      <div class="section-count" id="closed-count">0 件</div>
+    </div>
+    <div class="table-wrap">
+      <table class="case-table">
+        <thead>
+          <tr>
+            <th class="td-check">重啟</th>
+            <th>分類</th>
+            <th>待辦事項</th>
+            <th>優先級</th>
+            <th>截止日期</th>
+            <th class="sortable" onclick="sortBy('closedAt')">結案日期 <i class="sort-icon" id="sort-closedAt">↕</i></th>
+          </tr>
+        </thead>
+        <tbody id="closed-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ VIEW PANEL ═══ -->
+<div class="view-overlay" id="view-overlay" onclick="closeViewOutside(event)">
+<div class="view-panel" id="view-panel">
+
+  <div class="vp-header">
+    <div class="vp-cat-dot" id="vp-cat-dot"></div>
+    <div class="vp-title" id="vp-title">案件詳情</div>
+    <button class="vp-close" onclick="closeView()">✕</button>
+  </div>
+
+  <div class="vp-body">
+
+    <!-- 基本資料卡 -->
+    <div class="vp-info-card">
+      <div class="vp-info-card-header">
+        <span class="vp-info-card-label">基本資料</span>
+        <button class="btn-edit-case" onclick="openEditFromView()">✎ 編輯案件</button>
+      </div>
+      <div class="vp-grid" id="vp-info-grid">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- 進度記錄卡 -->
+    <div class="vp-progress-card">
+      <div class="vp-progress-header">
+        <span class="vp-progress-title">進度記錄</span>
+      </div>
+
+      <div class="vp-log-list" id="vp-log-list"></div>
+
+      <!-- 新增進度（inline） -->
+      <div class="vp-add-log">
+        <button class="vp-add-toggle" id="vp-add-toggle" onclick="toggleAddLog()">＋ 新增進度</button>
+        <div class="vp-add-form" id="vp-add-form">
+          <div class="vp-add-top">
+            <input class="form-input" type="date" id="vp-log-date">
+            <textarea class="form-textarea" id="vp-log-text" placeholder="輸入進度內容（可換行；選取文字後點色彩按鈕可標色）" style="min-height:80px;"></textarea>
+          </div>
+          <div class="vp-add-toolbar">
+            <span class="toolbar-label">標色：</span>
+            <button class="clr-btn red" onclick="vpApplyColor('red')">● 紅</button>
+            <button class="clr-btn blue" onclick="vpApplyColor('blue')">● 藍</button>
+            <button class="clr-btn clr-clear" onclick="vpApplyColor('clear')">✕ 清除</button>
+          </div>
+          <div class="vp-add-actions">
+            <button class="btn-sm" onclick="toggleAddLog()">取消</button>
+            <button class="btn-sm accent" onclick="vpSaveLog()">新增進度</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 圖片 -->
+    <div class="vp-progress-card" id="vp-img-section" style="display:none;">
+      <div class="vp-progress-header">
+        <span class="vp-progress-title">相關圖片</span>
+      </div>
+      <div class="vp-img-grid" id="vp-img-grid"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ═══ EDIT MODAL ═══ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+<div class="modal">
+
+  <div class="modal-header">
+    <div class="modal-cat-indicator" id="modal-cat-dot"></div>
+    <div class="modal-title" id="modal-heading">新增案件</div>
+    <button class="modal-close" onclick="closeEditModal()">✕</button>
+  </div>
+
+  <div class="modal-body">
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">客戶姓名</label>
+        <input class="form-input" id="f-name" placeholder="客戶姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label">分類</label>
+        <select class="form-select" id="f-cat" onchange="onCatChange()">
+          <option value="1">新契約・加保</option>
+          <option value="2">契約變更・退保</option>
+          <option value="3">壽險 / 產險理賠</option>
+          <option value="4">車禍追蹤</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row single">
+      <div class="form-group">
+        <label class="form-label">案件主題</label>
+        <input class="form-input" id="f-title" placeholder="例：壽險保額加保申請">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">優先級</label>
+        <select class="form-select" id="f-priority">
+          <option value="urgent">時效優先</option>
+          <option value="track">需追蹤</option>
+          <option value="record">紀錄待辦</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">截止日期（選填）</label>
+        <input class="form-input" type="date" id="f-deadline">
+      </div>
+    </div>
+
+    <!-- 車禍專屬 -->
+    <div class="crash-fields" id="crash-fields">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">事故日期</label>
+          <input class="form-input" type="date" id="f-accident" onchange="autoFillDeadline()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">保險公司</label>
+          <input class="form-input" id="f-insurer" placeholder="例：富邦產險">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">理賠人員（姓名＋電話）</label>
+          <input class="form-input" id="f-claim-name" placeholder="例：王小明　02-2345-6789">
+        </div>
+      </div>
+    </div>
+
+    <!-- 進度記錄（edit modal 輕量版）-->
+    <div class="modal-section">
+      <div class="modal-section-title">進度記錄</div>
+      <div class="edit-log-list" id="edit-log-list"></div>
+      <div class="add-log-area">
+        <div class="add-log-top">
+          <input class="form-input" type="date" id="log-date">
+          <textarea class="form-textarea" id="log-text" placeholder="輸入進度內容（可換行；選取後點色彩按鈕標色）" style="min-height:60px;"></textarea>
+        </div>
+        <div class="add-log-toolbar">
+          <span class="toolbar-label">標色：</span>
+          <button class="clr-btn red" onclick="applyColor('red')">● 紅</button>
+          <button class="clr-btn blue" onclick="applyColor('blue')">● 藍</button>
+          <button class="clr-btn clr-clear" onclick="applyColor('clear')">✕ 清除</button>
+          <span style="margin-left:auto;">
+            <button class="btn-add-log" onclick="addLog()">新增進度</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 圖片 -->
+    <div class="modal-section">
+      <div class="modal-section-title">相關圖片</div>
+      <div class="img-grid" id="img-grid"></div>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleImgUpload(event)">
+    </div>
+
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn-delete" id="btn-delete" onclick="deleteCase()" style="display:none;">刪除案件</button>
+    <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+    <button class="btn-save" onclick="saveCase()">儲存</button>
+  </div>
+
+</div>
+</div>
+
+<script>
+const CAT_NAMES = {1:'新契約・加保', 2:'契約變更・退保', 3:'壽險/產險理賠', 4:'車禍追蹤'};
+const CAT_COLORS = {1:'var(--cat1)', 2:'var(--cat2)', 3:'var(--cat3)', 4:'var(--cat4)'};
+const PRI_NAMES = {urgent:'時效優先', track:'需追蹤', record:'紀錄待辦'};
+const PRI_CLS = {urgent:'pri-urgent', track:'pri-track', record:'pri-record'};
+
+let cases = JSON.parse(localStorage.getItem('grass_cases') || '[]');
+let currentId = null;   // for edit modal
+let viewId = null;      // for view panel
+let sortField = null;
+let sortDir = 1;
+let modalLogs = [];
+let modalImgs = [];
+
+function save() { localStorage.setItem('grass_cases', JSON.stringify(cases)); }
+function uid() { return Date.now() + '_' + Math.random().toString(36).slice(2); }
+function esc(s) { if(!s)return''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function isUrgent(d) {
+  if(!d) return false;
+  const diff=(new Date(d)-new Date())/86400000;
+  return diff>=0 && diff<=7;
+}
+function addMonth(d) {
+  if(!d) return '';
+  const x=new Date(d); x.setMonth(x.getMonth()+1); return x.toISOString().slice(0,10);
+}
+
+// ── Dashboard ──
+function updateDashboard() {
+  const p=cases.filter(c=>!c.closed);
+  for(let i=1;i<=4;i++) document.getElementById('cnt'+i).textContent=p.filter(c=>c.category==i).length;
+}
+
+// ── Inline display ──
+function caseInline(c) {
+  const n=esc(c.name||''), t=esc(c.title||'（未命名）');
+  if(!n) return `<span class="case-inline"><span class="c-title">${t}</span></span>`;
+  return `<span class="case-inline"><span class="c-name">${n}</span><span class="c-sep">·</span><span class="c-title">${t}</span></span>`;
+}
+
+// ── Render log HTML (marker → spans) ──
+function renderLogHtml(stored) {
+  return (stored||'')
+    .replace(/\{clr-red\}([\s\S]*?)\{\/clr-red\}/g,'<span class="clr-red">$1</span>')
+    .replace(/\{clr-blue\}([\s\S]*?)\{\/clr-blue\}/g,'<span class="clr-blue">$1</span>');
+}
+
+// ── Render pending table ──
+function renderPending() {
+  const tbody=document.getElementById('pending-tbody');
+  let data=cases.filter(c=>!c.closed);
+  if(sortField) {
+    data.sort((a,b)=>{
+      let va=a[sortField]||'',vb=b[sortField]||'';
+      if(sortField==='priority'){const o={urgent:0,track:1,record:2};va=o[va]??9;vb=o[vb]??9;}
+      if(sortField==='category'){va=parseInt(va);vb=parseInt(vb);}
+      return va<vb?-sortDir:va>vb?sortDir:0;
+    });
+  }
+  document.getElementById('pending-count').textContent=data.length+' 件';
+  if(!data.length){tbody.innerHTML='<tr class="empty-row"><td colspan="6">目前無待辦案件 🎉</td></tr>';return;}
+  tbody.innerHTML=data.map(c=>`
+    <tr onclick="openView('${c.id}')">
+      <td class="td-check" onclick="event.stopPropagation()">
+        <input type="checkbox" class="close-check" ${c.closed?'checked':''} onchange="toggleClose('${c.id}',this.checked)">
+      </td>
+      <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
+      <td>${caseInline(c)}</td>
+      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
+      <td>${c.deadline?`<span class="${isUrgent(c.deadline)?'deadline-urgent':'deadline-normal'}">${c.deadline}${isUrgent(c.deadline)?' ⚠':''}</span>`:'<span class="deadline-empty">—</span>'}</td>
+      <td class="td-accident">${c.accident||(c.category==4?'—':'')}</td>
+    </tr>`).join('');
+}
+
+// ── Render closed table ──
+function renderClosed() {
+  const tbody=document.getElementById('closed-tbody');
+  let data=cases.filter(c=>c.closed);
+  data.sort((a,b)=>{
+    if(sortField==='closedAt'){let va=a.closedAt||'',vb=b.closedAt||'';return va<vb?-sortDir:va>vb?sortDir:0;}
+    return (b.closedAt||'')<(a.closedAt||'')?-1:1;
+  });
+  document.getElementById('closed-count').textContent=data.length+' 件';
+  if(!data.length){tbody.innerHTML='<tr class="empty-row"><td colspan="6">尚無已結案件</td></tr>';return;}
+  tbody.innerHTML=data.map(c=>`
+    <tr class="closed-row" onclick="openView('${c.id}')">
+      <td class="td-check" onclick="event.stopPropagation()">
+        <input type="checkbox" class="close-check" checked onchange="toggleClose('${c.id}',this.checked)">
+      </td>
+      <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
+      <td>${caseInline(c)}</td>
+      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
+      <td class="deadline-normal">${c.deadline||'—'}</td>
+      <td class="deadline-normal">${c.closedAt||'—'}</td>
+    </tr>`).join('');
+}
+
+function renderAll() { renderPending(); renderClosed(); updateDashboard(); }
+
+function sortBy(field) {
+  if(sortField===field) sortDir*=-1; else {sortField=field;sortDir=1;}
+  document.querySelectorAll('.sort-icon').forEach(el=>el.textContent='↕');
+  const el=document.getElementById('sort-'+field);
+  if(el) el.textContent=sortDir===1?'↑':'↓';
+  renderAll();
+}
+
+function toggleClose(id,checked) {
+  const c=cases.find(x=>x.id===id);
+  if(!c) return;
+  c.closed=checked; c.closedAt=checked?new Date().toISOString().slice(0,10):null;
+  save(); renderAll();
+}
+
+function switchTab(tab) {
+  document.getElementById('tab-pending').style.display=tab==='pending'?'':'none';
+  document.getElementById('tab-closed').style.display=tab==='closed'?'':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0&&tab==='pending')||(i===1&&tab==='closed'));
+  });
+}
+
+// ══════════════════════════════
+//  VIEW PANEL
+// ══════════════════════════════
+function openView(id) {
+  viewId=id;
+  const c=cases.find(x=>x.id===id);
+  if(!c) return;
+
+  document.getElementById('vp-cat-dot').style.background=CAT_COLORS[c.category];
+  document.getElementById('vp-title').textContent=(c.name||'')+(c.name&&c.title?' · ':'' )+(c.title||'案件詳情');
+
+  // build info grid
+  const isCrash=c.category==4;
+  // 合併理賠人員＋電話
+  const claimContact = [c.claimName, c.claimPhone].filter(Boolean).join('　');
+  let fields=[
+    {label:'分類',value:`<span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span>`},
+    {label:'優先級',value:`<span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span>`},
+  ];
+  if(isCrash) fields.push({label:'事故日期',value:c.accident||'',mono:true,empty:!c.accident});
+  fields.push({
+    label:'截止日期',
+    value:c.deadline||'',
+    mono:true,
+    urgent:c.deadline&&isUrgent(c.deadline),
+    empty:!c.deadline
+  });
+  if(isCrash){
+    fields.push({label:'保險公司',value:c.insurer||'',empty:!c.insurer});
+    fields.push({label:'理賠人員',value:claimContact,empty:!claimContact});
+  }
+
+  document.getElementById('vp-info-grid').innerHTML=fields.map(f=>`
+    <div class="vp-field">
+      <div class="vp-field-label">${f.label}</div>
+      <div class="vp-field-value ${f.mono?'mono':''} ${f.urgent?'urgent':''} ${f.empty?'empty':''}">
+        ${f.empty?'—':f.value}${f.urgent?' ⚠':''}
+      </div>
+    </div>`).join('');
+
+  renderViewLogs(c);
+
+  // images
+  const imgSec=document.getElementById('vp-img-section');
+  const imgGrid=document.getElementById('vp-img-grid');
+  if(c.imgs&&c.imgs.length){
+    imgSec.style.display='';
+    imgGrid.innerHTML=c.imgs.map(src=>`<div class="vp-img-thumb"><img src="${src}" onclick="window.open('${src}','_blank')"></div>`).join('');
+  } else {
+    imgSec.style.display='none';
+  }
+
+  // reset add-log form
+  document.getElementById('vp-add-form').classList.remove('open');
+  document.getElementById('vp-log-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('vp-log-text').value='';
+
+  document.getElementById('view-overlay').classList.add('open');
+}
+
+function renderViewLogs(c) {
+  const logs=(c.logs||[]).slice().sort((a,b)=>a.dt<b.dt?-1:1);
+  const el=document.getElementById('vp-log-list');
+  if(!logs.length){
+    el.innerHTML='<div class="vp-empty-log">尚無進度記錄</div>';
+    return;
+  }
+  el.innerHTML=logs.map((log,i)=>`
+    <div class="vp-log-item">
+      <div class="vp-log-left">
+        <div class="vp-log-dot"></div>
+        <div class="vp-log-line"></div>
+      </div>
+      <div class="vp-log-right">
+        <div class="vp-log-date">${log.dt||''}</div>
+        <div class="vp-log-body">${renderLogHtml(esc(log.html||log.text||''))}</div>
+      </div>
+    </div>`).join('');
+}
+
+function closeView() {
+  document.getElementById('view-overlay').classList.remove('open');
+  viewId=null;
+}
+function closeViewOutside(e) { if(e.target===document.getElementById('view-overlay')) closeView(); }
+
+function toggleAddLog() {
+  const f=document.getElementById('vp-add-form');
+  f.classList.toggle('open');
+  if(f.classList.contains('open')) {
+    document.getElementById('vp-log-date').value=new Date().toISOString().slice(0,10);
+    document.getElementById('vp-log-text').value='';
+  }
+}
+
+function vpApplyColor(color) {
+  const ta=document.getElementById('vp-log-text');
+  applyColorTo(ta, color);
+}
+
+function vpSaveLog() {
+  const dt=document.getElementById('vp-log-date').value;
+  const text=document.getElementById('vp-log-text').value.trim();
+  if(!text) return;
+  const c=cases.find(x=>x.id===viewId);
+  if(!c) return;
+  if(!c.logs) c.logs=[];
+  c.logs.push({dt,html:text});
+  save();
+  renderViewLogs(c);
+  renderAll();
+  document.getElementById('vp-add-form').classList.remove('open');
+}
+
+// ══════════════════════════════
+//  EDIT MODAL
+// ══════════════════════════════
+function openEditFromView() {
+  closeView();
+  openEditModal(viewId);
+  viewId=null;
+}
+
+function openEditModal(id) {
+  currentId=id;
+  const c=id?cases.find(x=>x.id===id):null;
+  document.getElementById('btn-delete').style.display=id?'':'none';
+  document.getElementById('modal-heading').textContent=c?'編輯案件':'新增案件';
+  document.getElementById('f-name').value=c?.name||'';
+  document.getElementById('f-cat').value=c?.category||'1';
+  document.getElementById('f-title').value=c?.title||'';
+  document.getElementById('f-priority').value=c?.priority||'urgent';
+  document.getElementById('f-deadline').value=c?.deadline||'';
+  document.getElementById('f-accident').value=c?.accident||'';
+  document.getElementById('f-insurer').value=c?.insurer||'';
+  document.getElementById('f-claim-name').value=c?.claimName||'';
+  modalLogs=c?JSON.parse(JSON.stringify(c.logs||[])):[];
+  modalImgs=c?JSON.parse(JSON.stringify(c.imgs||[])):[];
+  document.getElementById('log-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('log-text').value='';
+  updateCatDot(); onCatChange(); renderEditLogs(); renderImgs();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  currentId=null;
+}
+function closeModalOutside(e) { if(e.target===document.getElementById('modal-overlay')) closeEditModal(); }
+
+function updateCatDot() {
+  document.getElementById('modal-cat-dot').style.background=CAT_COLORS[document.getElementById('f-cat').value];
+}
+function onCatChange() {
+  updateCatDot();
+  const cf=document.getElementById('crash-fields');
+  document.getElementById('f-cat').value==4?cf.classList.add('visible'):cf.classList.remove('visible');
+}
+function autoFillDeadline() {
+  const acc=document.getElementById('f-accident').value;
+  if(acc) document.getElementById('f-deadline').value=addMonth(acc);
+}
+
+function renderEditLogs() {
+  const el=document.getElementById('edit-log-list');
+  if(!modalLogs.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:6px 0;">尚無進度記錄</div>';return;}
+  const sorted=[...modalLogs].sort((a,b)=>a.dt<b.dt?-1:1);
+  el.innerHTML=sorted.map((log)=>{
+    const ri=modalLogs.indexOf(log);
+    return `<div class="edit-log-entry">
+      <div class="edit-log-date">${log.dt||''}</div>
+      <div class="edit-log-content">${renderLogHtml(esc(log.html||log.text||''))}</div>
+      <button class="log-delete" onclick="deleteLog(${ri})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// colour apply (shared helper)
+function applyColorTo(ta, color) {
+  const s=ta.selectionStart, e=ta.selectionEnd;
+  if(s===e&&color!=='clear'){alert('請先選取要標色的文字');return;}
+  const val=ta.value, sel=val.slice(s,e);
+  let replaced;
+  if(color==='clear'){
+    const region=s===e?val:sel;
+    const cleaned=region.replace(/\{clr-red\}([\s\S]*?)\{\/clr-red\}/g,'$1').replace(/\{clr-blue\}([\s\S]*?)\{\/clr-blue\}/g,'$1');
+    if(s===e){ta.value=cleaned;return;}
+    replaced=val.slice(0,s)+cleaned+val.slice(e);
+  } else {
+    replaced=val.slice(0,s)+`{clr-${color}}${sel}{/clr-${color}}`+val.slice(e);
+  }
+  ta.value=replaced; ta.focus();
+}
+
+function applyColor(color) { applyColorTo(document.getElementById('log-text'),color); }
+
+function addLog() {
+  const dt=document.getElementById('log-date').value;
+  const text=document.getElementById('log-text').value.trim();
+  if(!text) return;
+  modalLogs.push({dt,html:text});
+  document.getElementById('log-text').value='';
+  document.getElementById('log-date').value=new Date().toISOString().slice(0,10);
+  renderEditLogs();
+}
+function deleteLog(i) { modalLogs.splice(i,1); renderEditLogs(); }
+
+function renderImgs() {
+  const grid=document.getElementById('img-grid');
+  let html=modalImgs.map((src,i)=>`
+    <div class="img-thumb">
+      <img src="${src}" onclick="window.open('${src}','_blank')">
+      <button class="del-img" onclick="deleteImg(${i})">✕</button>
+    </div>`).join('');
+  if(modalImgs.length<8) html+=`<div class="upload-btn" onclick="document.getElementById('file-input').click()"><span class="up-icon">＋</span><span>新增圖片</span></div>`;
+  grid.innerHTML=html;
+}
+function handleImgUpload(e) {
+  Array.from(e.target.files).slice(0,8-modalImgs.length).forEach(file=>{
+    const r=new FileReader();
+    r.onload=ev=>{modalImgs.push(ev.target.result);renderImgs();};
+    r.readAsDataURL(file);
+  });
+  e.target.value='';
+}
+function deleteImg(i) { modalImgs.splice(i,1); renderImgs(); }
+
+function saveCase() {
+  const data={
+    name:document.getElementById('f-name').value.trim(),
+    category:parseInt(document.getElementById('f-cat').value),
+    title:document.getElementById('f-title').value.trim(),
+    priority:document.getElementById('f-priority').value,
+    deadline:document.getElementById('f-deadline').value,
+    accident:document.getElementById('f-accident').value,
+    insurer:document.getElementById('f-insurer').value.trim(),
+    claimName:document.getElementById('f-claim-name').value.trim(),
+    logs:modalLogs, imgs:modalImgs,
+  };
+  if(currentId){
+    const idx=cases.findIndex(x=>x.id===currentId);
+    if(idx>=0) cases[idx]={...cases[idx],...data};
+  } else {
+    cases.push({id:uid(),closed:false,closedAt:null,createdAt:new Date().toISOString(),...data});
+  }
+  save(); renderAll(); closeEditModal();
+}
+
+function deleteCase() {
+  if(!currentId) return;
+  if(!confirm('確定要刪除此案件？此操作無法復原。')) return;
+  cases=cases.filter(x=>x.id!==currentId);
+  save(); renderAll(); closeEditModal();
+}
+
+renderAll();
+</script>
+</body>
+</html>
