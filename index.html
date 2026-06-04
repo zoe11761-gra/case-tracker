@@ -365,6 +365,87 @@
   .crash-fields { display:none; }
   .crash-fields.visible { display:contents; }
 
+
+  /* ── 進度記錄：水平佈局 (日期左，內容右) ── */
+  .vp-log-row {
+    display:flex; gap:0; align-items:flex-start;
+    padding:14px 0; border-bottom:1px solid var(--border);
+  }
+  .vp-log-row:last-child { border-bottom:none; }
+  .vp-log-date-col {
+    font-family:'DM Mono',monospace; font-size:13px; color:var(--accent);
+    min-width:96px; max-width:96px; padding-top:2px; flex-shrink:0; font-weight:500;
+  }
+  .vp-log-content-col { flex:1; display:flex; flex-direction:column; gap:8px; }
+  .vp-log-body {
+    font-size:15px; color:var(--text); line-height:1.75;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .vp-log-body .clr-red { color:#e86060; }
+  .vp-log-body .clr-blue { color:#6aaae8; }
+  .vp-log-meta-row { display:flex; align-items:center; gap:8px; }
+  .vp-log-edit-btn {
+    background:none; border:none; color:var(--text3); font-size:12px;
+    cursor:pointer; padding:2px 6px; border-radius:4px; transition:all .15s;
+    font-family:'Noto Sans TC',sans-serif;
+  }
+  .vp-log-edit-btn:hover { color:var(--accent); background:var(--accent-dim); }
+
+  /* log inline edit */
+  .vp-log-edit-row { display:flex; flex-direction:column; gap:8px; }
+  .vp-edit-top { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:start; }
+  .vp-edit-toolbar { display:flex; align-items:center; gap:6px; }
+  .vp-edit-actions { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  .btn-sm.danger { background:var(--red-dim); border-color:rgba(224,85,85,.2); color:var(--red); margin-right:auto; }
+  .btn-sm.danger:hover { background:rgba(224,85,85,.22); }
+
+  /* ── 基本資料大標題 ── */
+  .vp-section-heading {
+    font-family:'Noto Serif TC',serif; font-size:17px; font-weight:700;
+    color:var(--text); letter-spacing:.02em;
+    display:flex; align-items:center; gap:10px;
+  }
+  .vp-section-heading::after { content:''; flex:1; height:1px; background:var(--border2); }
+  .vp-progress-title-lg {
+    font-family:'Noto Serif TC',serif; font-size:17px; font-weight:700;
+    color:var(--text); letter-spacing:.02em;
+    display:flex; align-items:center; gap:10px;
+  }
+  .vp-progress-title-lg::after { content:''; flex:1; height:1px; background:var(--border2); }
+
+  /* ── Lightbox ── */
+  .lightbox {
+    display:none; position:fixed; inset:0; z-index:500;
+    background:rgba(0,0,0,.88); align-items:center; justify-content:center;
+    backdrop-filter:blur(6px);
+  }
+  .lightbox.open { display:flex; }
+  .lightbox img {
+    max-width:90vw; max-height:88vh; border-radius:8px;
+    box-shadow:0 16px 64px rgba(0,0,0,.7); object-fit:contain;
+  }
+  .lightbox-close {
+    position:absolute; top:20px; right:24px;
+    background:rgba(255,255,255,.12); border:none; color:#fff;
+    width:38px; height:38px; border-radius:50%; font-size:18px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background .15s;
+  }
+  .lightbox-close:hover { background:rgba(255,255,255,.22); }
+  .lightbox-nav {
+    position:absolute; top:50%; transform:translateY(-50%);
+    background:rgba(255,255,255,.1); border:none; color:#fff;
+    width:44px; height:44px; border-radius:50%; font-size:20px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background .15s;
+  }
+  .lightbox-nav:hover { background:rgba(255,255,255,.2); }
+  .lightbox-prev { left:20px; }
+  .lightbox-next { right:20px; }
+  .lightbox-counter {
+    position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+    color:rgba(255,255,255,.6); font-family:'DM Mono',monospace; font-size:13px;
+  }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -467,7 +548,7 @@
     <!-- 基本資料卡 -->
     <div class="vp-info-card">
       <div class="vp-info-card-header">
-        <span class="vp-info-card-label">基本資料</span>
+        <div class="vp-section-heading">基本資料</div>
         <button class="btn-edit-case" onclick="openEditFromView()">✎ 編輯案件</button>
       </div>
       <div class="vp-grid" id="vp-info-grid">
@@ -478,7 +559,7 @@
     <!-- 進度記錄卡 -->
     <div class="vp-progress-card">
       <div class="vp-progress-header">
-        <span class="vp-progress-title">進度記錄</span>
+        <div class="vp-progress-title-lg">進度記錄</div>
       </div>
 
       <div class="vp-log-list" id="vp-log-list"></div>
@@ -796,7 +877,7 @@ function openView(id) {
   const imgGrid=document.getElementById('vp-img-grid');
   if(c.imgs&&c.imgs.length){
     imgSec.style.display='';
-    imgGrid.innerHTML=c.imgs.map(src=>`<div class="vp-img-thumb"><img src="${src}" onclick="window.open('${src}','_blank')"></div>`).join('');
+    imgGrid.innerHTML=c.imgs.map((src,i)=>`<div class="vp-img-thumb"><img src="${src}" onclick="openLightbox('${src}')"></div>`).join('');
   } else {
     imgSec.style.display='none';
   }
@@ -816,17 +897,35 @@ function renderViewLogs(c) {
     el.innerHTML='<div class="vp-empty-log">尚無進度記錄</div>';
     return;
   }
-  el.innerHTML=logs.map((log,i)=>`
-    <div class="vp-log-item">
-      <div class="vp-log-left">
-        <div class="vp-log-dot"></div>
-        <div class="vp-log-line"></div>
+  el.innerHTML=logs.map((log,i)=>{
+    const realIdx=(c.logs||[]).findIndex(x=>x===log||(x.dt===log.dt&&(x.html||x.text)===(log.html||log.text)));
+    return `<div class="vp-log-row" id="vplog-${i}">
+      <div class="vp-log-date-col">${log.dt||''}</div>
+      <div class="vp-log-content-col">
+        <div class="vp-log-body" id="vplog-body-${i}">${renderLogHtml(esc(log.html||log.text||''))}</div>
+        <div class="vp-log-edit-row" id="vplog-edit-${i}" style="display:none;">
+          <div class="vp-edit-top">
+            <input class="form-input" type="date" id="vplog-edt-date-${i}" value="${log.dt||''}">
+            <textarea class="form-textarea" id="vplog-edt-text-${i}" style="min-height:70px;">${log.html||log.text||''}</textarea>
+          </div>
+          <div class="vp-edit-toolbar">
+            <span class="toolbar-label">標色：</span>
+            <button class="clr-btn red" onclick="vpEditApplyColor(${i},'red')">● 紅</button>
+            <button class="clr-btn blue" onclick="vpEditApplyColor(${i},'blue')">● 藍</button>
+            <button class="clr-btn clr-clear" onclick="vpEditApplyColor(${i},'clear')">✕ 清除</button>
+          </div>
+          <div class="vp-edit-actions">
+            <button class="btn-sm danger" onclick="vpDeleteLog(${i})">刪除</button>
+            <button class="btn-sm" onclick="vpCancelEditLog(${i})">取消</button>
+            <button class="btn-sm accent" onclick="vpSaveEditLog(${i})">儲存</button>
+          </div>
+        </div>
+        <div class="vp-log-meta-row">
+          <button class="vp-log-edit-btn" onclick="vpToggleEditLog(${i})">✎ 編輯</button>
+        </div>
       </div>
-      <div class="vp-log-right">
-        <div class="vp-log-date">${log.dt||''}</div>
-        <div class="vp-log-body">${renderLogHtml(esc(log.html||log.text||''))}</div>
-      </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function closeView() {
@@ -857,19 +956,56 @@ function vpSaveLog() {
   if(!c) return;
   if(!c.logs) c.logs=[];
   c.logs.push({dt,html:text});
-  save();
-  renderViewLogs(c);
-  renderAll();
+  save(); renderViewLogs(c); renderAll();
   document.getElementById('vp-add-form').classList.remove('open');
+  document.getElementById('vp-log-text').value='';
+}
+
+function vpToggleEditLog(i) {
+  const bodyEl=document.getElementById('vplog-body-'+i);
+  const editEl=document.getElementById('vplog-edit-'+i);
+  const isOpen=editEl.style.display!=='none';
+  editEl.style.display=isOpen?'none':'';
+  bodyEl.style.display=isOpen?'':'none';
+}
+function vpCancelEditLog(i) {
+  const c=cases.find(x=>x.id===viewId); if(!c) return;
+  const log=[...c.logs].sort((a,b)=>a.dt<b.dt?-1:1)[i];
+  document.getElementById('vplog-edt-text-'+i).value=log?.html||log?.text||'';
+  document.getElementById('vplog-edt-date-'+i).value=log?.dt||'';
+  document.getElementById('vplog-edit-'+i).style.display='none';
+  document.getElementById('vplog-body-'+i).style.display='';
+}
+function vpSaveEditLog(i) {
+  const c=cases.find(x=>x.id===viewId); if(!c) return;
+  const sorted=[...c.logs].sort((a,b)=>a.dt<b.dt?-1:1);
+  const log=sorted[i];
+  const origIdx=c.logs.indexOf(log);
+  if(origIdx<0) return;
+  c.logs[origIdx].dt=document.getElementById('vplog-edt-date-'+i).value;
+  c.logs[origIdx].html=document.getElementById('vplog-edt-text-'+i).value.trim();
+  save(); renderViewLogs(c); renderAll();
+}
+function vpDeleteLog(i) {
+  if(!confirm('確定刪除此進度記錄？')) return;
+  const c=cases.find(x=>x.id===viewId); if(!c) return;
+  const sorted=[...c.logs].sort((a,b)=>a.dt<b.dt?-1:1);
+  const log=sorted[i];
+  const origIdx=c.logs.indexOf(log);
+  if(origIdx>=0) c.logs.splice(origIdx,1);
+  save(); renderViewLogs(c); renderAll();
+}
+function vpEditApplyColor(i, color) {
+  applyColorTo(document.getElementById('vplog-edt-text-'+i), color);
 }
 
 // ══════════════════════════════
 //  EDIT MODAL
 // ══════════════════════════════
 function openEditFromView() {
+  const id=viewId;
   closeView();
-  openEditModal(viewId);
-  viewId=null;
+  openEditModal(id);
 }
 
 function openEditModal(id) {
@@ -1004,7 +1140,39 @@ function deleteCase() {
   save(); renderAll(); closeEditModal();
 }
 
+// ── Lightbox ──
+let lbImgs=[], lbIdx=0;
+function openLightbox(src) {
+  const c=cases.find(x=>x.id===viewId);
+  lbImgs=c?.imgs||[src];
+  lbIdx=lbImgs.indexOf(src); if(lbIdx<0) lbIdx=0;
+  lbShow();
+  document.getElementById('lightbox').classList.add('open');
+}
+function lbShow() {
+  document.getElementById('lb-img').src=lbImgs[lbIdx];
+  document.getElementById('lb-counter').textContent=(lbIdx+1)+' / '+lbImgs.length;
+}
+function lbNav(dir) { lbIdx=(lbIdx+dir+lbImgs.length)%lbImgs.length; lbShow(); }
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+function closeLightboxBg(e) { if(e.target===document.getElementById('lightbox')) closeLightbox(); }
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('lightbox').classList.contains('open')) return;
+  if(e.key==='ArrowLeft') lbNav(-1);
+  if(e.key==='ArrowRight') lbNav(1);
+  if(e.key==='Escape') closeLightbox();
+});
+
 renderAll();
 </script>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightboxBg(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-nav lightbox-prev" onclick="lbNav(-1)">‹</button>
+  <img id="lb-img" src="" alt="">
+  <button class="lightbox-nav lightbox-next" onclick="lbNav(1)">›</button>
+  <div class="lightbox-counter" id="lb-counter"></div>
+</div>
 </body>
 </html>
