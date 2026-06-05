@@ -457,6 +457,20 @@
     transition:color .3s;
   }
   .sync-dot.offline { color:var(--red); }
+
+  /* ── Mobile: dashboard cards as filter buttons ── */
+  .dash-card { cursor:pointer; transition:border-color .15s, transform .1s; }
+  .dash-card:active { transform:scale(.97); }
+  .dash-card-active {
+    border-color:var(--accent) !important;
+    box-shadow:0 0 0 2px rgba(200,169,110,.2);
+  }
+  .dash-card:nth-child(1).dash-card-active { border-color:var(--cat1) !important; box-shadow:0 0 0 2px rgba(200,169,110,.2); }
+  .dash-card:nth-child(2).dash-card-active { border-color:var(--cat2) !important; box-shadow:0 0 0 2px rgba(90,143,204,.2); }
+  .dash-card:nth-child(3).dash-card-active { border-color:var(--cat3) !important; box-shadow:0 0 0 2px rgba(90,170,122,.2); }
+  .dash-card:nth-child(4).dash-card-active { border-color:var(--cat4) !important; box-shadow:0 0 0 2px rgba(212,128,74,.2); }
+  /* filter badge: only show on mobile */
+  #filter-badge { display:none !important; }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -552,6 +566,9 @@
   .case-card.cat-4::before { background:var(--cat4); }
   .case-card.closed-card { opacity:.55; }
 
+
+  /* ── filter badge show on mobile ── */
+  #filter-badge.visible { display:flex !important; }
   /* ── mobile empty state ── */
   .mobile-empty {
     text-align:center; padding:48px 24px;
@@ -615,7 +632,7 @@
 <!-- LOADING BAR -->
 <div id="loading-bar" style="position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);z-index:999;display:none;"></div>
 <div class="topbar">
-  <div class="topbar-logo">草草・案件追蹤明細表<span class="sync-dot" id="sync-dot" title="Firebase 已連線">●</span></div>
+  <div class="topbar-logo" onclick="clearFilter()" style="cursor:pointer;">草草・案件追蹤明細表<span class="sync-dot" id="sync-dot" title="Firebase 已連線">●</span></div>
   <div class="topbar-tabs">
     <button class="tab-btn active" onclick="switchTab('pending')">待辦案件</button>
     <button class="tab-btn" onclick="switchTab('closed')">已結案</button>
@@ -628,23 +645,29 @@
   <!-- DASHBOARD -->
   <div class="dashboard-sticky">
   <div class="dashboard">
-    <div class="dash-card">
+    <div class="dash-card" id="dash-card-1" onclick="filterByCategory(1)">
       <div class="dash-label">新契約・加保</div>
       <div class="dash-row"><div class="dash-count" id="cnt1">0</div><div class="dash-unit">件待辦</div></div>
     </div>
-    <div class="dash-card">
+    <div class="dash-card" id="dash-card-2" onclick="filterByCategory(2)">
       <div class="dash-label">契約變更・退保</div>
       <div class="dash-row"><div class="dash-count" id="cnt2">0</div><div class="dash-unit">件待辦</div></div>
     </div>
-    <div class="dash-card">
+    <div class="dash-card" id="dash-card-3" onclick="filterByCategory(3)">
       <div class="dash-label">壽險 / 產險理賠</div>
       <div class="dash-row"><div class="dash-count" id="cnt3">0</div><div class="dash-unit">件待辦</div></div>
     </div>
-    <div class="dash-card">
+    <div class="dash-card" id="dash-card-4" onclick="filterByCategory(4)">
       <div class="dash-label">車禍追蹤</div>
       <div class="dash-row"><div class="dash-count" id="cnt4">0</div><div class="dash-unit">件待辦</div></div>
     </div>
   </div>
+  </div>
+
+  <!-- MOBILE FILTER BADGE -->
+  <div id="filter-badge" style="margin:0 14px 10px;padding:8px 14px;background:var(--accent-dim);border:1px solid rgba(200,169,110,.3);border-radius:8px;font-size:13px;color:var(--accent);align-items:center;justify-content:space-between;">
+    <span id="filter-badge-text"></span>
+    <button onclick="clearFilter()" style="background:none;border:none;color:var(--accent);font-size:16px;cursor:pointer;padding:0 0 0 8px;">✕</button>
   </div>
 
   <!-- PENDING TAB -->
@@ -909,6 +932,7 @@ let sortField = null;
 let sortDir   = 1;
 let modalLogs = [];
 let modalImgs = [];
+let activeFilter = null; // null = 全部, 1-4 = 分類篩選
 
 // ── Firebase sync ──
 function save(c) {
@@ -1035,9 +1059,10 @@ function renderMobileCards() {
 function renderMobilePending() {
   const el = document.getElementById('pending-cards');
   if(!el) return;
-  const data = cases.filter(c => !c.closed);
+  let data = cases.filter(c => !c.closed);
+  if(activeFilter) data = data.filter(c => c.category == activeFilter);
   el.innerHTML = data.length ? buildCards(data, false)
-    : '<div class="mobile-empty">目前無待辦案件 🎉</div>';
+    : `<div class="mobile-empty">${activeFilter ? CAT_NAMES[activeFilter] + '<br>目前無待辦案件' : '目前無待辦案件 🎉'}</div>`;
 }
 
 function buildCards(data, isClosed) {
@@ -1072,6 +1097,45 @@ function buildCards(data, isClosed) {
         </div>
       </div>`;
   }).join('');
+}
+
+
+// ════════════════════════════════════
+//  MOBILE FILTER BY CATEGORY
+// ════════════════════════════════════
+function filterByCategory(cat) {
+  if(!isMobile()) return; // desktop: no filter behaviour
+  activeFilter = (activeFilter === cat) ? null : cat; // toggle
+  updateFilterUI();
+  renderMobilePending();
+}
+
+function clearFilter() {
+  activeFilter = null;
+  updateFilterUI();
+  renderMobilePending();
+}
+
+function updateFilterUI() {
+  // Highlight active dash card
+  for(let i=1;i<=4;i++){
+    const el = document.getElementById('dash-card-'+i);
+    if(!el) continue;
+    if(activeFilter === i) {
+      el.classList.add('dash-card-active');
+    } else {
+      el.classList.remove('dash-card-active');
+    }
+  }
+  // Show filter badge
+  const badge = document.getElementById('filter-badge');
+  if(!badge) return;
+  if(activeFilter) {
+    badge.classList.add('visible');
+    badge.querySelector('span').textContent = '篩選中：' + CAT_NAMES[activeFilter];
+  } else {
+    badge.classList.remove('visible');
+  }
 }
 
 function renderAll() {
