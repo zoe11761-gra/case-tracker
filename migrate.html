@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>資料搬移工具・草草案件追蹤</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --bg:#16181c; --surface:#1e2128; --surface2:#252931;
+    --border:#333842; --text:#e8e4dd; --text2:#9a9590; --text3:#6b6760;
+    --accent:#c8a96e; --accent-dim:rgba(200,169,110,0.12);
+    --green:#5aaa7a; --green-dim:rgba(90,170,122,0.12);
+    --red:#e05555; --red-dim:rgba(224,85,85,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans TC',sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card {
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:36px 40px; max-width:560px; width:100%;
+  }
+  .logo { font-family:'Noto Serif TC',serif; font-size:18px; color:var(--accent);
+    margin-bottom:6px; }
+  .subtitle { font-size:13px; color:var(--text3); margin-bottom:28px; }
+  .step { margin-bottom:20px; }
+  .step-title { font-size:13px; font-weight:500; color:var(--text2);
+    letter-spacing:.06em; text-transform:uppercase; margin-bottom:8px; }
+  .status-box {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px; font-size:13px;
+    font-family:'DM Mono',monospace; line-height:1.7; min-height:52px;
+    color:var(--text2);
+  }
+  .status-box.ok    { border-color:var(--green); color:var(--green); background:var(--green-dim); }
+  .status-box.error { border-color:var(--red);   color:var(--red);   background:var(--red-dim); }
+  .case-preview {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:12px 16px; margin-top:8px;
+    max-height:200px; overflow-y:auto;
+  }
+  .case-item { font-size:12px; color:var(--text2); padding:4px 0;
+    border-bottom:1px solid var(--border); display:flex; gap:8px; }
+  .case-item:last-child { border-bottom:none; }
+  .case-item .ci-name { color:var(--text); font-weight:500; }
+  .case-item .ci-cat { color:var(--accent); font-size:11px; }
+  .btn {
+    width:100%; padding:13px; border-radius:8px; border:none;
+    font-family:'Noto Sans TC',sans-serif; font-size:15px; font-weight:500;
+    cursor:pointer; transition:all .15s; margin-top:12px;
+  }
+  .btn-main { background:var(--accent); color:#1a1200; }
+  .btn-main:hover { background:#e8c98e; }
+  .btn-main:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-secondary { background:var(--surface2); color:var(--text2);
+    border:1px solid var(--border); }
+  .btn-secondary:hover { color:var(--text); }
+  .divider { height:1px; background:var(--border); margin:24px 0; }
+  .note { font-size:12px; color:var(--text3); line-height:1.7; margin-top:12px; }
+  .progress { height:4px; background:var(--border); border-radius:2px; margin-top:12px; overflow:hidden; }
+  .progress-bar { height:100%; background:var(--accent); border-radius:2px;
+    width:0%; transition:width .3s; }
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">草草・資料搬移工具</div>
+  <div class="subtitle">將 localStorage 舊資料一次搬移到 Firebase</div>
+
+  <!-- Step 1: 讀取 localStorage -->
+  <div class="step">
+    <div class="step-title">Step 1 — 偵測本機舊資料</div>
+    <div class="status-box" id="s1-status">正在偵測…</div>
+    <div id="s1-preview"></div>
+  </div>
+
+  <!-- Step 2: 連線 Firebase -->
+  <div class="step">
+    <div class="step-title">Step 2 — Firebase 連線狀態</div>
+    <div class="status-box" id="s2-status">等待中…</div>
+  </div>
+
+  <!-- Step 3: 搬移 -->
+  <div class="step">
+    <div class="step-title">Step 3 — 執行搬移</div>
+    <div class="status-box" id="s3-status">尚未開始</div>
+    <div class="progress" id="progress-wrap" style="display:none;">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+  </div>
+
+  <button class="btn btn-main" id="btn-migrate" disabled onclick="doMigrate()">
+    開始搬移資料到 Firebase
+  </button>
+  <button class="btn btn-secondary" id="btn-go" style="display:none;"
+    onclick="window.location.href='index.html'">
+    ✓ 完成，前往案件追蹤系統
+  </button>
+
+  <p class="note">
+    ⚠ 搬移完成後，這個工具頁面就不需要了，可以從 GitHub 刪除。<br>
+    搬移不會清除 localStorage，如需清除可手動操作。
+  </p>
+</div>
+
+<script>
+const CAT_NAMES = {1:'新契約・加保',2:'契約變更・退保',3:'壽險/產險理賠',4:'車禍追蹤'};
+
+// ── Firebase init ──
+const firebaseConfig = {
+  apiKey: "AIzaSyC0Sq4zkCxpo0ilUKrh2viyE7CozxXAgDI",
+  authDomain: "case-tracker-41237.firebaseapp.com",
+  databaseURL: "https://case-tracker-41237-default-rtdb.firebaseio.com",
+  projectId: "case-tracker-41237",
+  storageBucket: "case-tracker-41237.firebasestorage.app",
+  messagingSenderId: "140725383208",
+  appId: "1:140725383208:web:f34f240d249b28471cc51d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const casesRef = db.ref('cases');
+
+let localCases = [];
+let firebaseReady = false;
+
+// ── Step 1: Read localStorage ──
+function checkLocal() {
+  const raw = localStorage.getItem('grass_cases');
+  const s1  = document.getElementById('s1-status');
+  const s1p = document.getElementById('s1-preview');
+
+  if (!raw) {
+    s1.textContent = '找不到舊資料（grass_cases 不存在）';
+    s1.className = 'status-box error';
+    return;
+  }
+
+  try {
+    localCases = JSON.parse(raw);
+    if (!Array.isArray(localCases) || localCases.length === 0) {
+      s1.textContent = 'localStorage 存在但沒有案件資料';
+      s1.className = 'status-box error';
+      return;
+    }
+    s1.textContent = `✓ 找到 ${localCases.length} 筆案件`;
+    s1.className = 'status-box ok';
+
+    // Preview
+    s1p.innerHTML = `<div class="case-preview">${
+      localCases.map(c => `
+        <div class="case-item">
+          <span class="ci-name">${c.name||'（未命名）'}</span>
+          <span>·</span>
+          <span>${c.title||''}</span>
+          <span class="ci-cat">${CAT_NAMES[c.category]||''}</span>
+          <span style="margin-left:auto;color:var(--text3)">${c.closed?'已結案':'待辦'}</span>
+        </div>`).join('')
+    }</div>`;
+    checkReady();
+  } catch(e) {
+    s1.textContent = '解析失敗：' + e.message;
+    s1.className = 'status-box error';
+  }
+}
+
+// ── Step 2: Firebase connection ──
+function checkFirebase() {
+  const s2 = document.getElementById('s2-status');
+  const connRef = db.ref('.info/connected');
+  connRef.on('value', snap => {
+    if (snap.val() === true) {
+      s2.textContent = '✓ Firebase 連線正常';
+      s2.className = 'status-box ok';
+      firebaseReady = true;
+      checkReady();
+    } else {
+      s2.textContent = '連線中…';
+      s2.className = 'status-box';
+      firebaseReady = false;
+    }
+  });
+}
+
+function checkReady() {
+  const btn = document.getElementById('btn-migrate');
+  if (localCases.length > 0 && firebaseReady) {
+    btn.disabled = false;
+  }
+}
+
+// ── Step 3: Migrate ──
+async function doMigrate() {
+  const s3  = document.getElementById('s3-status');
+  const btn = document.getElementById('btn-migrate');
+  const bar = document.getElementById('progress-bar');
+  const wrap= document.getElementById('progress-wrap');
+
+  btn.disabled = true;
+  wrap.style.display = '';
+  s3.textContent = '搬移中…';
+  s3.className = 'status-box';
+
+  // Check existing Firebase data first
+  let existingSnap;
+  try {
+    existingSnap = await casesRef.once('value');
+  } catch(e) {
+    s3.textContent = '讀取 Firebase 失敗：' + e.message;
+    s3.className = 'status-box error';
+    btn.disabled = false;
+    return;
+  }
+
+  const existing = existingSnap.val() || {};
+  const existingIds = Object.keys(existing);
+  let skipped = 0, written = 0, errors = 0;
+
+  for (let i = 0; i < localCases.length; i++) {
+    const c = localCases[i];
+
+    // skip if id already exists in Firebase
+    if (existingIds.includes(c.id)) {
+      skipped++;
+    } else {
+      try {
+        await casesRef.child(c.id).set(c);
+        written++;
+      } catch(e) {
+        errors++;
+        console.error('Failed to write case:', c.id, e);
+      }
+    }
+
+    // update progress
+    bar.style.width = ((i+1)/localCases.length*100) + '%';
+    await new Promise(r => setTimeout(r, 80)); // small delay for UX
+  }
+
+  if (errors === 0) {
+    s3.className = 'status-box ok';
+    s3.textContent =
+      `✓ 搬移完成！寫入 ${written} 筆，跳過 ${skipped} 筆（已存在）`;
+    document.getElementById('btn-go').style.display = '';
+  } else {
+    s3.className = 'status-box error';
+    s3.textContent =
+      `完成但有錯誤：寫入 ${written} 筆，跳過 ${skipped} 筆，失敗 ${errors} 筆`;
+  }
+}
+
+// ── Init ──
+checkLocal();
+checkFirebase();
+</script>
+</body>
+</html>

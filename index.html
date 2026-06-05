@@ -472,7 +472,7 @@
   .btn-add-case { display:none; }
 
   /* ── main wrapper ── */
-  .main-wrapper { padding:0 0 90px; }
+  .main-wrapper { padding:0 0 100px; }
 
   /* ── sticky dashboard: 2×2 grid ── */
   .dashboard-sticky {
@@ -492,30 +492,10 @@
   .table-wrap { display:none; }
   .mobile-card-list { display:flex !important; flex-direction:column; gap:10px; }
 
-  /* ── bottom nav bar ── */
-  .mobile-nav {
-    display:flex !important;
-    position:fixed; bottom:0; left:0; right:0; z-index:150;
-    background:var(--surface);
-    border-top:1px solid var(--border);
-    height:64px;
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-  .mobile-nav-btn {
-    flex:1; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:3px;
-    border:none; background:transparent; cursor:pointer;
-    color:var(--text3); font-size:10px; letter-spacing:.04em;
-    font-family:'Noto Sans TC',sans-serif;
-    transition:color .15s;
-  }
-  .mobile-nav-btn .nav-icon { font-size:20px; line-height:1; }
-  .mobile-nav-btn.active { color:var(--accent); }
-
   /* ── FAB (浮動新增按鈕) ── */
   .mobile-fab {
     display:flex !important;
-    position:fixed; bottom:76px; right:18px; z-index:151;
+    position:fixed; bottom:24px; right:18px; z-index:151;
     width:52px; height:52px; border-radius:50%;
     background:var(--accent); border:none; color:#1a1200;
     font-size:26px; font-weight:300; line-height:1;
@@ -623,7 +603,6 @@
 /* Desktop: hide mobile-only elements */
 @media (min-width: 769px) {
   .mobile-card-list { display:none; }
-  .mobile-nav { display:none; }
   .mobile-fab { display:none; }
 }
 </style>
@@ -1466,12 +1445,6 @@ document.addEventListener('keydown',e=>{
   <div class="lightbox-counter" id="lb-counter"></div>
 </div>
 
-<!-- MOBILE NAV BAR -->
-<div class="mobile-nav" id="mobile-nav">
-  <button class="mobile-nav-btn active" id="mnav-pending" onclick="mobileTab('pending')">
-    <span class="nav-icon">📋</span>待辦案件
-  </button>
-</div>
 <!-- FAB -->
 <button class="mobile-fab" onclick="openEditModal(null)">＋</button>
 </body>
