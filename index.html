@@ -469,8 +469,33 @@
   .dash-card:nth-child(2).dash-card-active { border-color:var(--cat2) !important; box-shadow:0 0 0 2px rgba(90,143,204,.2); }
   .dash-card:nth-child(3).dash-card-active { border-color:var(--cat3) !important; box-shadow:0 0 0 2px rgba(90,170,122,.2); }
   .dash-card:nth-child(4).dash-card-active { border-color:var(--cat4) !important; box-shadow:0 0 0 2px rgba(212,128,74,.2); }
-  /* filter badge: only show on mobile */
-  #filter-badge { display:none !important; }
+
+  /* ── mobile search box ── */
+  .mobile-search-wrap {
+    display:none;
+    align-items:center;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:0 10px 0 12px;
+    gap:4px;
+    height:34px;
+    margin-left:auto;
+    min-width:0;
+    flex-shrink:1;
+  }
+  .mobile-search-input {
+    background:none; border:none; outline:none;
+    color:var(--text); font-family:'Noto Sans TC',sans-serif;
+    font-size:13px; width:110px; min-width:0;
+  }
+  .mobile-search-input::placeholder { color:var(--text3); }
+  .mobile-search-clear {
+    background:none; border:none; color:var(--text3);
+    font-size:13px; cursor:pointer; padding:0; flex-shrink:0;
+    line-height:1;
+  }
+  .mobile-search-clear:hover { color:var(--text2); }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -567,8 +592,13 @@
   .case-card.closed-card { opacity:.55; }
 
 
-  /* ── filter badge show on mobile ── */
-  #filter-badge.visible { display:flex !important; }
+
+  /* ── show search box on mobile ── */
+  .mobile-search-wrap { display:flex !important; }
+
+  /* ── section-header on mobile: allow wrap ── */
+  .section-header { flex-wrap:nowrap; align-items:center; }
+  #tab-pending .section-header { gap:8px; }
   /* ── mobile empty state ── */
   .mobile-empty {
     text-align:center; padding:48px 24px;
@@ -664,17 +694,19 @@
   </div>
   </div>
 
-  <!-- MOBILE FILTER BADGE -->
-  <div id="filter-badge" style="margin:0 14px 10px;padding:8px 14px;background:var(--accent-dim);border:1px solid rgba(200,169,110,.3);border-radius:8px;font-size:13px;color:var(--accent);align-items:center;justify-content:space-between;">
-    <span id="filter-badge-text"></span>
-    <button onclick="clearFilter()" style="background:none;border:none;color:var(--accent);font-size:16px;cursor:pointer;padding:0 0 0 8px;">✕</button>
-  </div>
-
   <!-- PENDING TAB -->
   <div id="tab-pending" style="padding-top:20px;">
     <div class="section-header">
       <div class="section-title">待辦案件</div>
       <div class="section-count" id="pending-count">0 件</div>
+      <div class="mobile-search-wrap" id="mobile-search-wrap">
+        <input class="mobile-search-input" id="mobile-search" type="text"
+          placeholder="搜尋姓名・主題"
+          oninput="onMobileSearch(this.value)"
+          autocomplete="off" autocorrect="off" autocapitalize="off">
+        <button class="mobile-search-clear" id="mobile-search-clear"
+          onclick="clearSearch()" style="display:none;">✕</button>
+      </div>
     </div>
     <div class="mobile-card-list" id="pending-cards" style="display:none;"></div>
     <div class="table-wrap">
@@ -933,6 +965,7 @@ let sortDir   = 1;
 let modalLogs = [];
 let modalImgs = [];
 let activeFilter = null; // null = 全部, 1-4 = 分類篩選
+let searchKeyword = ''; // mobile search string
 
 // ── Firebase sync ──
 function save(c) {
@@ -1061,6 +1094,13 @@ function renderMobilePending() {
   if(!el) return;
   let data = cases.filter(c => !c.closed);
   if(activeFilter) data = data.filter(c => c.category == activeFilter);
+  if(searchKeyword) {
+    const kw = searchKeyword.toLowerCase();
+    data = data.filter(c =>
+      (c.name||'').toLowerCase().includes(kw) ||
+      (c.title||'').toLowerCase().includes(kw)
+    );
+  }
   el.innerHTML = data.length ? buildCards(data, false)
     : `<div class="mobile-empty">${activeFilter ? CAT_NAMES[activeFilter] + '<br>目前無待辦案件' : '目前無待辦案件 🎉'}</div>`;
 }
@@ -1103,6 +1143,20 @@ function buildCards(data, isClosed) {
 // ════════════════════════════════════
 //  MOBILE FILTER BY CATEGORY
 // ════════════════════════════════════
+
+// ── Mobile search ──
+function onMobileSearch(val) {
+  searchKeyword = val.trim();
+  document.getElementById('mobile-search-clear').style.display = searchKeyword ? '' : 'none';
+  renderMobilePending();
+}
+function clearSearch() {
+  searchKeyword = '';
+  document.getElementById('mobile-search').value = '';
+  document.getElementById('mobile-search-clear').style.display = 'none';
+  renderMobilePending();
+}
+
 function filterByCategory(cat) {
   if(!isMobile()) return; // desktop: no filter behaviour
   activeFilter = (activeFilter === cat) ? null : cat; // toggle
@@ -1128,14 +1182,6 @@ function updateFilterUI() {
     }
   }
   // Show filter badge
-  const badge = document.getElementById('filter-badge');
-  if(!badge) return;
-  if(activeFilter) {
-    badge.classList.add('visible');
-    badge.querySelector('span').textContent = '篩選中：' + CAT_NAMES[activeFilter];
-  } else {
-    badge.classList.remove('visible');
-  }
 }
 
 function renderAll() {
