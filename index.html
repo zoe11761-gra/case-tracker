@@ -645,6 +645,8 @@
   /* ── triple row: stack all on mobile ── */
   .triple-row { grid-template-columns:1fr !important; }
   .triple-row .form-group { grid-column:auto; }
+  /* ── name + category: stack on mobile ── */
+  .name-cat-row { grid-template-columns:1fr !important; }
 }
 
 /* Desktop: hide mobile-only elements */
@@ -831,7 +833,7 @@
 
   <div class="modal-body">
 
-    <div class="form-row">
+    <div class="form-row name-cat-row">
       <div class="form-group">
         <label class="form-label">客戶姓名</label>
         <input class="form-input" id="f-name" placeholder="客戶姓名">
