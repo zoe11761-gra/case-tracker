@@ -451,6 +451,12 @@
     position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
     color:rgba(255,255,255,.6); font-family:'DM Mono',monospace; font-size:13px;
   }
+  .sync-dot {
+    display:inline-block; margin-left:8px; font-size:9px;
+    color:var(--green); opacity:0.7; vertical-align:middle;
+    transition:color .3s;
+  }
+  .sync-dot.offline { color:var(--red); }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -609,10 +615,9 @@
   .add-log-top { grid-template-columns:110px 1fr; }
   .img-grid { grid-template-columns:repeat(3,1fr); }
 
-  /* ── handle date row: stack on mobile ── */
-  .form-row[style*="1fr 1fr 1fr"] .form-group:first-child {
-    grid-column: 1 / -1;
-  }
+  /* ── triple row: stack all on mobile ── */
+  .triple-row { grid-template-columns:1fr !important; }
+  .triple-row .form-group { grid-column:auto; }
 }
 
 /* Desktop: hide mobile-only elements */
@@ -622,12 +627,16 @@
   .mobile-fab { display:none; }
 }
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
 <!-- TOP BAR -->
+<!-- LOADING BAR -->
+<div id="loading-bar" style="position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);z-index:999;display:none;"></div>
 <div class="topbar">
-  <div class="topbar-logo">草草・案件追蹤明細表</div>
+  <div class="topbar-logo">草草・案件追蹤明細表<span class="sync-dot" id="sync-dot" title="Firebase 已連線">●</span></div>
   <div class="topbar-tabs">
     <button class="tab-btn active" onclick="switchTab('pending')">待辦案件</button>
     <button class="tab-btn" onclick="switchTab('closed')">已結案</button>
@@ -811,7 +820,7 @@
       </div>
     </div>
 
-    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+    <div class="form-row triple-row">
       <div class="form-group">
         <label class="form-label">預計處理時間（選填）</label>
         <input class="form-input" type="date" id="f-handle-date">
@@ -890,68 +899,113 @@
 </div>
 
 <script>
-const CAT_NAMES = {1:'新契約・加保', 2:'契約變更・退保', 3:'壽險/產險理賠', 4:'車禍追蹤'};
-const CAT_COLORS = {1:'var(--cat1)', 2:'var(--cat2)', 3:'var(--cat3)', 4:'var(--cat4)'};
-const PRI_NAMES = {urgent:'時效優先', track:'需追蹤', record:'紀錄待辦'};
-const PRI_CLS = {urgent:'pri-urgent', track:'pri-track', record:'pri-record'};
+// ═══════════════════════════════════════════════════
+//  FIREBASE SETUP  (Realtime Database, compat SDK)
+// ═══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyC0Sq4zkCxpo0ilUKrh2viyE7CozxXAgDI",
+  authDomain: "case-tracker-41237.firebaseapp.com",
+  databaseURL: "https://case-tracker-41237-default-rtdb.firebaseio.com",
+  projectId: "case-tracker-41237",
+  storageBucket: "case-tracker-41237.firebasestorage.app",
+  messagingSenderId: "140725383208",
+  appId: "1:140725383208:web:f34f240d249b28471cc51d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const casesRef = db.ref('cases');
 
-let cases = JSON.parse(localStorage.getItem('grass_cases') || '[]');
-let currentId = null;   // for edit modal
-let viewId = null;      // for view panel
+// ═══════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════
+const CAT_NAMES = {1:'新契約・加保',2:'契約變更・退保',3:'壽險/產險理賠',4:'車禍追蹤'};
+const CAT_COLORS = {1:'var(--cat1)',2:'var(--cat2)',3:'var(--cat3)',4:'var(--cat4)'};
+const PRI_NAMES = {urgent:'時效優先',track:'需追蹤',record:'紀錄待辦'};
+const PRI_CLS   = {urgent:'pri-urgent',track:'pri-track',record:'pri-record'};
+
+let cases = [];
+let currentId = null;
+let viewId    = null;
 let sortField = null;
-let sortDir = 1;
+let sortDir   = 1;
 let modalLogs = [];
 let modalImgs = [];
 
-function save() { localStorage.setItem('grass_cases', JSON.stringify(cases)); }
-function uid() { return Date.now() + '_' + Math.random().toString(36).slice(2); }
+// ── Firebase sync ──
+function save(c) {
+  // save single case object to Firebase
+  casesRef.child(c.id).set(c);
+}
+function saveDelete(id) {
+  casesRef.child(id).remove();
+}
+
+// Listen for real-time updates
+casesRef.on('value', snap => {
+  const val = snap.val() || {};
+  cases = Object.values(val);
+  renderAll();
+});
+
+// ── Helpers ──
+function uid()  { return Date.now() + '_' + Math.random().toString(36).slice(2); }
 function esc(s) { if(!s)return''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function isUrgent(d) {
   if(!d) return false;
-  const diff=(new Date(d)-new Date())/86400000;
-  return diff>=0 && diff<=30;
+  const diff = (new Date(d) - new Date()) / 86400000;
+  return diff >= 0 && diff <= 30;
 }
 function addMonth(d) {
   if(!d) return '';
-  const x=new Date(d); x.setMonth(x.getMonth()+1); return x.toISOString().slice(0,10);
+  const x = new Date(d); x.setMonth(x.getMonth()+1); return x.toISOString().slice(0,10);
+}
+
+// ── Loading indicator ──
+function showLoading(show) {
+  const el = document.getElementById('loading-bar');
+  if(el) el.style.display = show ? '' : 'none';
 }
 
 // ── Dashboard ──
 function updateDashboard() {
-  const p=cases.filter(c=>!c.closed);
-  for(let i=1;i<=4;i++) document.getElementById('cnt'+i).textContent=p.filter(c=>c.category==i).length;
+  const p = cases.filter(c => !c.closed);
+  for(let i=1;i<=4;i++)
+    document.getElementById('cnt'+i).textContent = p.filter(c=>c.category==i).length;
 }
 
-// ── Inline display ──
+// ── Inline name·title ──
 function caseInline(c) {
   const n=esc(c.name||''), t=esc(c.title||'（未命名）');
   if(!n) return `<span class="case-inline"><span class="c-title">${t}</span></span>`;
   return `<span class="case-inline"><span class="c-name">${n}</span><span class="c-sep">·</span><span class="c-title">${t}</span></span>`;
 }
 
-// ── Render log HTML (marker → spans) ──
+// ── Log HTML render ──
 function renderLogHtml(stored) {
   return (stored||'')
     .replace(/\{clr-red\}([\s\S]*?)\{\/clr-red\}/g,'<span class="clr-red">$1</span>')
     .replace(/\{clr-blue\}([\s\S]*?)\{\/clr-blue\}/g,'<span class="clr-blue">$1</span>');
 }
 
-// ── Render pending table ──
+// ════════════════════════════════════
+//  DESKTOP TABLE RENDER
+// ════════════════════════════════════
 function renderPending() {
-  const tbody=document.getElementById('pending-tbody');
-  let data=cases.filter(c=>!c.closed);
+  const tbody = document.getElementById('pending-tbody');
+  if(!tbody) return;
+  let data = cases.filter(c => !c.closed);
   if(sortField) {
-    data.sort((a,b)=>{
-      let va=a[sortField]||'',vb=b[sortField]||'';
+    data.sort((a,b) => {
+      let va=a[sortField]||'', vb=b[sortField]||'';
       if(sortField==='priority'){const o={urgent:0,track:1,record:2};va=o[va]??9;vb=o[vb]??9;}
       if(sortField==='category'){va=parseInt(va);vb=parseInt(vb);}
       return va<vb?-sortDir:va>vb?sortDir:0;
     });
   }
-  document.getElementById('pending-count').textContent=data.length+' 件';
-  if(!data.length){tbody.innerHTML='<tr class="empty-row"><td colspan="6">目前無待辦案件 🎉</td></tr>';return;}
-  tbody.innerHTML=data.map(c=>`
+  document.getElementById('pending-count').textContent = data.length+' 件';
+  if(!data.length){tbody.innerHTML='<tr class="empty-row"><td colspan="7">目前無待辦案件 🎉</td></tr>';return;}
+  tbody.innerHTML = data.map(c=>`
     <tr onclick="openView('${c.id}')">
       <td class="td-check" onclick="event.stopPropagation()">
         <input type="checkbox" class="close-check" ${c.closed?'checked':''} onchange="toggleClose('${c.id}',this.checked)">
@@ -961,83 +1015,67 @@ function renderPending() {
       <td>${c.handleDate?`<span class="deadline-normal">${c.handleDate}</span>`:'<span class="deadline-empty">—</span>'}</td>
       <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
       <td>${c.deadline?`<span class="${isUrgent(c.deadline)?'deadline-urgent':'deadline-normal'}">${c.deadline}${isUrgent(c.deadline)?' ⚠':''}</span>`:'<span class="deadline-empty">—</span>'}</td>
-      <td class="td-accident">${c.accident||(c.category==4?'<span style=\"color:var(--blue)\"">—</span>':'')}</td>
+      <td class="td-accident">${c.accident||(c.category==4?'<span style="color:var(--blue)">—</span>':'')}</td>
     </tr>`).join('');
 }
 
-// ── Render closed table ──
 function renderClosed() {
-  const tbody=document.getElementById('closed-tbody');
-  let data=cases.filter(c=>c.closed);
+  const tbody = document.getElementById('closed-tbody');
+  if(!tbody) return;
+  let data = cases.filter(c => c.closed);
   data.sort((a,b)=>{
     if(sortField==='closedAt'){let va=a.closedAt||'',vb=b.closedAt||'';return va<vb?-sortDir:va>vb?sortDir:0;}
     return (b.closedAt||'')<(a.closedAt||'')?-1:1;
   });
-  document.getElementById('closed-count').textContent=data.length+' 件';
-  if(!data.length){tbody.innerHTML='<tr class="empty-row"><td colspan="6">尚無已結案件</td></tr>';return;}
-  tbody.innerHTML=data.map(c=>`
+  document.getElementById('closed-count').textContent = data.length+' 件';
+  if(!data.length){tbody.innerHTML='<tr class="empty-row"><td colspan="7">尚無已結案件</td></tr>';return;}
+  tbody.innerHTML = data.map(c=>`
     <tr class="closed-row" onclick="openView('${c.id}')">
       <td class="td-check" onclick="event.stopPropagation()">
         <input type="checkbox" class="close-check" checked onchange="toggleClose('${c.id}',this.checked)">
       </td>
       <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
       <td>${caseInline(c)}</td>
-      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
       <td class="deadline-normal">${c.handleDate||'—'}</td>
+      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
       <td class="deadline-normal">${c.deadline||'—'}</td>
       <td class="deadline-normal">${c.closedAt||'—'}</td>
     </tr>`).join('');
 }
 
-
 // ════════════════════════════════════
-//  MOBILE CARD RENDERING
+//  MOBILE CARD RENDER
 // ════════════════════════════════════
 function isMobile() { return window.innerWidth <= 768; }
 
 function renderMobileCards() {
   renderMobilePending();
-  renderMobileClosed();
+  // no closed tab on mobile
 }
 
 function renderMobilePending() {
   const el = document.getElementById('pending-cards');
-  if (!el) return;
-  let data = cases.filter(c => !c.closed);
-  const html = buildCards(data, false);
-  el.innerHTML = html || '<div class="mobile-empty">目前無待辦案件 🎉</div>';
-}
-
-function renderMobileClosed() {
-  const el = document.getElementById('closed-cards');
-  if (!el) return;
-  let data = cases.filter(c => c.closed);
-  data.sort((a,b) => (b.closedAt||'') > (a.closedAt||'') ? 1 : -1);
-  const html = buildCards(data, true);
-  el.innerHTML = html || '<div class="mobile-empty">尚無已結案件</div>';
+  if(!el) return;
+  const data = cases.filter(c => !c.closed);
+  el.innerHTML = data.length ? buildCards(data, false)
+    : '<div class="mobile-empty">目前無待辦案件 🎉</div>';
 }
 
 function buildCards(data, isClosed) {
   return data.map(c => {
-    const name = esc(c.name || '');
-    const title = esc(c.title || '（未命名）');
-    const nameHtml = name
-      ? `${name}<span>　${title}</span>`
-      : title;
-    const deadlineClass = isUrgent(c.deadline) ? 'urgent' : c.deadline ? '' : 'empty';
-    const deadlineVal = c.deadline
-      ? (isUrgent(c.deadline) ? c.deadline + ' ⚠' : c.deadline)
-      : '—';
-    const handleVal = c.handleDate || '—';
-    const handleClass = c.handleDate ? '' : 'empty';
+    const name  = esc(c.name||'');
+    const title = esc(c.title||'（未命名）');
+    const nameHtml = name ? `${name}<span class="card-title-sep">　${title}</span>` : title;
+    const deadlineClass = isUrgent(c.deadline)?'urgent': c.deadline?'':'empty';
+    const deadlineVal   = c.deadline ? (isUrgent(c.deadline)?c.deadline+' ⚠':c.deadline) : '—';
     return `
       <div class="case-card cat-${c.category}${isClosed?' closed-card':''}" onclick="openView('${c.id}')">
         <div class="case-card-top">
           <div class="case-card-name">${nameHtml}</div>
           <input type="checkbox" class="case-card-check"
             ${isClosed?'checked':''}
-            onchange="event.stopPropagation();toggleClose('${c.id}',this.checked)"
-            onclick="event.stopPropagation()">
+            onclick="event.stopPropagation()"
+            onchange="event.stopPropagation();toggleClose('${c.id}',this.checked)">
         </div>
         <div class="case-card-badges">
           <span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span>
@@ -1050,27 +1088,12 @@ function buildCards(data, isClosed) {
           </div>
           <div class="case-card-meta-item">
             <div class="case-card-meta-label">預計處理</div>
-            <div class="case-card-meta-val ${handleClass}">${handleVal}</div>
+            <div class="case-card-meta-val ${c.handleDate?'':'empty'}">${c.handleDate||'—'}</div>
           </div>
         </div>
       </div>`;
   }).join('');
 }
-
-function mobileTab(tab) {
-  document.getElementById('tab-pending').style.display = tab==='pending' ? '' : 'none';
-  document.getElementById('tab-closed').style.display  = tab==='closed'  ? '' : 'none';
-  // sync desktop tabs
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active',(i===0&&tab==='pending')||(i===1&&tab==='closed'));
-  });
-  document.getElementById('mnav-pending').classList.toggle('active', tab==='pending');
-  document.getElementById('mnav-closed').classList.toggle('active',  tab==='closed');
-}
-
-// Patch renderAll to also render mobile cards
-const _origRenderAll = renderAll;
-
 
 function renderAll() {
   renderPending();
@@ -1079,68 +1102,64 @@ function renderAll() {
   renderMobileCards();
 }
 
-
+// ── Sort ──
 function sortBy(field) {
   if(sortField===field) sortDir*=-1; else {sortField=field;sortDir=1;}
   document.querySelectorAll('.sort-icon').forEach(el=>el.textContent='↕');
-  const el=document.getElementById('sort-'+field);
-  if(el) el.textContent=sortDir===1?'↑':'↓';
+  const el = document.getElementById('sort-'+field);
+  if(el) el.textContent = sortDir===1?'↑':'↓';
   renderAll();
 }
 
-function toggleClose(id,checked) {
-  const c=cases.find(x=>x.id===id);
+// ── Toggle close ──
+function toggleClose(id, checked) {
+  const c = cases.find(x=>x.id===id);
   if(!c) return;
-  c.closed=checked; c.closedAt=checked?new Date().toISOString().slice(0,10):null;
-  save(); renderAll();
+  c.closed    = checked;
+  c.closedAt  = checked ? new Date().toISOString().slice(0,10) : null;
+  save(c);
 }
 
+// ── Desktop tab switch ──
 function switchTab(tab) {
-  document.getElementById('tab-pending').style.display=tab==='pending'?'':'none';
-  document.getElementById('tab-closed').style.display=tab==='closed'?'':'none';
+  document.getElementById('tab-pending').style.display = tab==='pending'?'':'none';
+  document.getElementById('tab-closed').style.display  = tab==='closed'?'':'none';
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
     b.classList.toggle('active',(i===0&&tab==='pending')||(i===1&&tab==='closed'));
   });
-  // sync mobile nav
-  const mp=document.getElementById('mnav-pending');
-  const mc=document.getElementById('mnav-closed');
-  if(mp) mp.classList.toggle('active',tab==='pending');
-  if(mc) mc.classList.toggle('active',tab==='closed');
 }
 
-// ══════════════════════════════
+// ── Mobile tab (pending only) ──
+function mobileTab(tab) {
+  switchTab(tab);
+}
+
+// ════════════════════════════════════
 //  VIEW PANEL
-// ══════════════════════════════
+// ════════════════════════════════════
 function openView(id) {
-  viewId=id;
-  const c=cases.find(x=>x.id===id);
+  viewId = id;
+  const c = cases.find(x=>x.id===id);
   if(!c) return;
 
-  document.getElementById('vp-cat-dot').style.background=CAT_COLORS[c.category];
-  document.getElementById('vp-title').textContent=(c.name||'')+(c.name&&c.title?' · ':'' )+(c.title||'案件詳情');
+  document.getElementById('vp-cat-dot').style.background = CAT_COLORS[c.category];
+  document.getElementById('vp-title').textContent =
+    (c.name||'')+(c.name&&c.title?' · ':'')+(c.title||'案件詳情');
 
-  // build info grid
-  const isCrash=c.category==4;
-  // 合併理賠人員＋電話
+  const isCrash = c.category==4;
   const claimContact = [c.claimName, c.claimPhone].filter(Boolean).join('　');
-  let fields=[
-    {label:'分類',value:`<span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span>`},
-    {label:'優先級',value:`<span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span>`},
+  let fields = [
+    {label:'分類',   value:`<span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span>`},
+    {label:'優先級', value:`<span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span>`},
   ];
   if(isCrash) fields.push({label:'事故日期',value:c.accident||'',mono:true,empty:!c.accident});
-  fields.push({
-    label:'截止日期',
-    value:c.deadline||'',
-    mono:true,
-    urgent:c.deadline&&isUrgent(c.deadline),
-    empty:!c.deadline
-  });
+  fields.push({label:'截止日期',value:c.deadline||'',mono:true,urgent:c.deadline&&isUrgent(c.deadline),empty:!c.deadline});
   if(isCrash){
     fields.push({label:'保險公司',value:c.insurer||'',empty:!c.insurer});
     fields.push({label:'理賠人員',value:claimContact,empty:!claimContact});
   }
 
-  document.getElementById('vp-info-grid').innerHTML=fields.map(f=>`
+  document.getElementById('vp-info-grid').innerHTML = fields.map(f=>`
     <div class="vp-field">
       <div class="vp-field-label">${f.label}</div>
       <div class="vp-field-value ${f.mono?'mono':''} ${f.urgent?'urgent':''} ${f.empty?'empty':''}">
@@ -1150,34 +1169,27 @@ function openView(id) {
 
   renderViewLogs(c);
 
-  // images
-  const imgSec=document.getElementById('vp-img-section');
-  const imgGrid=document.getElementById('vp-img-grid');
+  const imgSec  = document.getElementById('vp-img-section');
+  const imgGrid = document.getElementById('vp-img-grid');
   if(c.imgs&&c.imgs.length){
     imgSec.style.display='';
-    imgGrid.innerHTML=c.imgs.map((src,i)=>`<div class="vp-img-thumb"><img src="${src}" onclick="openLightbox('${src}')"></div>`).join('');
-  } else {
-    imgSec.style.display='none';
-  }
+    imgGrid.innerHTML = c.imgs.map((src,i)=>
+      `<div class="vp-img-thumb"><img src="${src}" onclick="openLightbox('${src}')"></div>`
+    ).join('');
+  } else { imgSec.style.display='none'; }
 
-  // reset add-log form
   document.getElementById('vp-add-form').classList.remove('open');
-  document.getElementById('vp-log-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('vp-log-text').value='';
-
+  document.getElementById('vp-log-date').value  = new Date().toISOString().slice(0,10);
+  document.getElementById('vp-log-text').value  = '';
   document.getElementById('view-overlay').classList.add('open');
 }
 
 function renderViewLogs(c) {
-  const logs=(c.logs||[]).slice().sort((a,b)=>a.dt<b.dt?-1:1);
-  const el=document.getElementById('vp-log-list');
-  if(!logs.length){
-    el.innerHTML='<div class="vp-empty-log">尚無進度記錄</div>';
-    return;
-  }
-  el.innerHTML=logs.map((log,i)=>{
-    const realIdx=(c.logs||[]).findIndex(x=>x===log||(x.dt===log.dt&&(x.html||x.text)===(log.html||log.text)));
-    return `<div class="vp-log-row" id="vplog-${i}">
+  const logs = (c.logs||[]).slice().sort((a,b)=>a.dt<b.dt?-1:1);
+  const el   = document.getElementById('vp-log-list');
+  if(!logs.length){el.innerHTML='<div class="vp-empty-log">尚無進度記錄</div>';return;}
+  el.innerHTML = logs.map((log,i)=>`
+    <div class="vp-log-row" id="vplog-${i}">
       <div class="vp-log-date-col">
         <div>${log.dt||''}</div>
         <button class="vp-log-edit-btn" onclick="vpToggleEditLog(${i})">✎ 編輯</button>
@@ -1191,120 +1203,114 @@ function renderViewLogs(c) {
           </div>
           <div class="vp-edit-toolbar">
             <span class="toolbar-label">標色：</span>
-            <button class="clr-btn red" onclick="vpEditApplyColor(${i},'red')">● 紅</button>
-            <button class="clr-btn blue" onclick="vpEditApplyColor(${i},'blue')">● 藍</button>
+            <button class="clr-btn red"      onclick="vpEditApplyColor(${i},'red')">● 紅</button>
+            <button class="clr-btn blue"     onclick="vpEditApplyColor(${i},'blue')">● 藍</button>
             <button class="clr-btn clr-clear" onclick="vpEditApplyColor(${i},'clear')">✕ 清除</button>
           </div>
           <div class="vp-edit-actions">
             <button class="btn-sm danger" onclick="vpDeleteLog(${i})">刪除</button>
-            <button class="btn-sm" onclick="vpCancelEditLog(${i})">取消</button>
+            <button class="btn-sm"        onclick="vpCancelEditLog(${i})">取消</button>
             <button class="btn-sm accent" onclick="vpSaveEditLog(${i})">儲存</button>
           </div>
         </div>
-
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 function closeView() {
   document.getElementById('view-overlay').classList.remove('open');
-  viewId=null;
+  viewId = null;
 }
 function closeViewOutside(e) { if(e.target===document.getElementById('view-overlay')) closeView(); }
 
 function toggleAddLog() {
-  const f=document.getElementById('vp-add-form');
+  const f = document.getElementById('vp-add-form');
   f.classList.toggle('open');
-  if(f.classList.contains('open')) {
-    document.getElementById('vp-log-date').value=new Date().toISOString().slice(0,10);
-    document.getElementById('vp-log-text').value='';
+  if(f.classList.contains('open')){
+    document.getElementById('vp-log-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('vp-log-text').value = '';
   }
 }
 
-function vpApplyColor(color) {
-  const ta=document.getElementById('vp-log-text');
-  applyColorTo(ta, color);
-}
+function vpApplyColor(color) { applyColorTo(document.getElementById('vp-log-text'),color); }
 
 function vpSaveLog() {
-  const dt=document.getElementById('vp-log-date').value;
-  const text=document.getElementById('vp-log-text').value.trim();
+  const dt   = document.getElementById('vp-log-date').value;
+  const text = document.getElementById('vp-log-text').value.trim();
   if(!text) return;
-  const c=cases.find(x=>x.id===viewId);
+  const c = cases.find(x=>x.id===viewId);
   if(!c) return;
   if(!c.logs) c.logs=[];
   c.logs.push({dt,html:text});
-  save(); renderViewLogs(c); renderAll();
+  save(c);
+  renderViewLogs(c);
   document.getElementById('vp-add-form').classList.remove('open');
   document.getElementById('vp-log-text').value='';
 }
 
 function vpToggleEditLog(i) {
-  const bodyEl=document.getElementById('vplog-body-'+i);
-  const editEl=document.getElementById('vplog-edit-'+i);
-  const isOpen=editEl.style.display!=='none';
-  editEl.style.display=isOpen?'none':'';
-  bodyEl.style.display=isOpen?'':'none';
+  const bodyEl = document.getElementById('vplog-body-'+i);
+  const editEl = document.getElementById('vplog-edit-'+i);
+  const isOpen = editEl.style.display!=='none';
+  editEl.style.display = isOpen?'none':'';
+  bodyEl.style.display = isOpen?'':'none';
 }
 function vpCancelEditLog(i) {
-  const c=cases.find(x=>x.id===viewId); if(!c) return;
-  const log=[...c.logs].sort((a,b)=>a.dt<b.dt?-1:1)[i];
-  document.getElementById('vplog-edt-text-'+i).value=log?.html||log?.text||'';
-  document.getElementById('vplog-edt-date-'+i).value=log?.dt||'';
+  const c = cases.find(x=>x.id===viewId); if(!c) return;
+  const log = [...(c.logs||[])].sort((a,b)=>a.dt<b.dt?-1:1)[i];
+  document.getElementById('vplog-edt-text-'+i).value = log?.html||log?.text||'';
+  document.getElementById('vplog-edt-date-'+i).value = log?.dt||'';
   document.getElementById('vplog-edit-'+i).style.display='none';
   document.getElementById('vplog-body-'+i).style.display='';
 }
 function vpSaveEditLog(i) {
-  const c=cases.find(x=>x.id===viewId); if(!c) return;
-  const sorted=[...c.logs].sort((a,b)=>a.dt<b.dt?-1:1);
-  const log=sorted[i];
-  const origIdx=c.logs.indexOf(log);
+  const c = cases.find(x=>x.id===viewId); if(!c) return;
+  const sorted  = [...(c.logs||[])].sort((a,b)=>a.dt<b.dt?-1:1);
+  const log     = sorted[i];
+  const origIdx = c.logs.indexOf(log);
   if(origIdx<0) return;
-  c.logs[origIdx].dt=document.getElementById('vplog-edt-date-'+i).value;
-  c.logs[origIdx].html=document.getElementById('vplog-edt-text-'+i).value.trim();
-  save(); renderViewLogs(c); renderAll();
+  c.logs[origIdx].dt   = document.getElementById('vplog-edt-date-'+i).value;
+  c.logs[origIdx].html = document.getElementById('vplog-edt-text-'+i).value.trim();
+  save(c); renderViewLogs(c);
 }
 function vpDeleteLog(i) {
   if(!confirm('確定刪除此進度記錄？')) return;
-  const c=cases.find(x=>x.id===viewId); if(!c) return;
-  const sorted=[...c.logs].sort((a,b)=>a.dt<b.dt?-1:1);
-  const log=sorted[i];
-  const origIdx=c.logs.indexOf(log);
+  const c = cases.find(x=>x.id===viewId); if(!c) return;
+  const sorted  = [...(c.logs||[])].sort((a,b)=>a.dt<b.dt?-1:1);
+  const log     = sorted[i];
+  const origIdx = c.logs.indexOf(log);
   if(origIdx>=0) c.logs.splice(origIdx,1);
-  save(); renderViewLogs(c); renderAll();
+  save(c); renderViewLogs(c);
 }
-function vpEditApplyColor(i, color) {
-  applyColorTo(document.getElementById('vplog-edt-text-'+i), color);
-}
+function vpEditApplyColor(i,color) { applyColorTo(document.getElementById('vplog-edt-text-'+i),color); }
 
-// ══════════════════════════════
+// ════════════════════════════════════
 //  EDIT MODAL
-// ══════════════════════════════
+// ════════════════════════════════════
 function openEditFromView() {
-  const id=viewId;
+  const id = viewId;
   closeView();
   openEditModal(id);
 }
 
 function openEditModal(id) {
-  currentId=id;
-  const c=id?cases.find(x=>x.id===id):null;
-  document.getElementById('btn-delete').style.display=id?'':'none';
-  document.getElementById('modal-heading').textContent=c?'編輯案件':'新增案件';
-  document.getElementById('f-name').value=c?.name||'';
-  document.getElementById('f-cat').value=c?.category||'1';
-  document.getElementById('f-title').value=c?.title||'';
-  document.getElementById('f-priority').value=c?.priority||'urgent';
-  document.getElementById('f-deadline').value=c?.deadline||'';
-  document.getElementById('f-handle-date').value=c?.handleDate||'';
-  document.getElementById('f-accident').value=c?.accident||'';
-  document.getElementById('f-insurer').value=c?.insurer||'';
-  document.getElementById('f-claim-name').value=c?.claimName||'';
-  modalLogs=c?JSON.parse(JSON.stringify(c.logs||[])):[];
-  modalImgs=c?JSON.parse(JSON.stringify(c.imgs||[])):[];
-  document.getElementById('log-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('log-text').value='';
+  currentId = id;
+  const c = id ? cases.find(x=>x.id===id) : null;
+  document.getElementById('btn-delete').style.display  = id?'':'none';
+  document.getElementById('modal-heading').textContent = c?'編輯案件':'新增案件';
+  document.getElementById('f-name').value        = c?.name||'';
+  document.getElementById('f-cat').value         = c?.category||'1';
+  document.getElementById('f-title').value       = c?.title||'';
+  document.getElementById('f-priority').value    = c?.priority||'urgent';
+  document.getElementById('f-handle-date').value = c?.handleDate||'';
+  document.getElementById('f-deadline').value    = c?.deadline||'';
+  document.getElementById('f-accident').value    = c?.accident||'';
+  document.getElementById('f-insurer').value     = c?.insurer||'';
+  document.getElementById('f-claim-name').value  = c?.claimName||'';
+  modalLogs = c ? JSON.parse(JSON.stringify(c.logs||[])) : [];
+  modalImgs = c ? JSON.parse(JSON.stringify(c.imgs||[])) : [];
+  document.getElementById('log-date').value  = new Date().toISOString().slice(0,10);
+  document.getElementById('log-text').value  = '';
   updateCatDot(); onCatChange(); renderEditLogs(); renderImgs();
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>{ document.querySelector('.modal').scrollTop=0; },10);
@@ -1312,29 +1318,28 @@ function openEditModal(id) {
 
 function closeEditModal() {
   document.getElementById('modal-overlay').classList.remove('open');
-  currentId=null;
+  currentId = null;
 }
 function closeModalOutside(e) { if(e.target===document.getElementById('modal-overlay')) closeEditModal(); }
 
 function updateCatDot() {
-  document.getElementById('modal-cat-dot').style.background=CAT_COLORS[document.getElementById('f-cat').value];
+  document.getElementById('modal-cat-dot').style.background = CAT_COLORS[document.getElementById('f-cat').value];
 }
 function onCatChange() {
   updateCatDot();
-  const cf=document.getElementById('crash-fields');
-  document.getElementById('f-cat').value==4?cf.classList.add('visible'):cf.classList.remove('visible');
+  const cf = document.getElementById('crash-fields');
+  document.getElementById('f-cat').value==4 ? cf.classList.add('visible') : cf.classList.remove('visible');
 }
 function autoFillDeadline() {
-  const acc=document.getElementById('f-accident').value;
-  if(acc) document.getElementById('f-deadline').value=addMonth(acc);
+  const acc = document.getElementById('f-accident').value;
+  if(acc) document.getElementById('f-deadline').value = addMonth(acc);
 }
 
 function renderEditLogs() {
-  const el=document.getElementById('edit-log-list');
+  const el = document.getElementById('edit-log-list');
   if(!modalLogs.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:6px 0;">尚無進度記錄</div>';return;}
-  const sorted=[...modalLogs].sort((a,b)=>a.dt<b.dt?-1:1);
-  el.innerHTML=sorted.map((log)=>{
-    const ri=modalLogs.indexOf(log);
+  el.innerHTML = [...modalLogs].sort((a,b)=>a.dt<b.dt?-1:1).map((log)=>{
+    const ri = modalLogs.indexOf(log);
     return `<div class="edit-log-entry">
       <div class="edit-log-date">${log.dt||''}</div>
       <div class="edit-log-content">${renderLogHtml(esc(log.html||log.text||''))}</div>
@@ -1343,7 +1348,6 @@ function renderEditLogs() {
   }).join('');
 }
 
-// colour apply (shared helper)
 function applyColorTo(ta, color) {
   const s=ta.selectionStart, e=ta.selectionEnd;
   if(s===e&&color!=='clear'){alert('請先選取要標色的文字');return;}
@@ -1359,12 +1363,11 @@ function applyColorTo(ta, color) {
   }
   ta.value=replaced; ta.focus();
 }
-
 function applyColor(color) { applyColorTo(document.getElementById('log-text'),color); }
 
 function addLog() {
-  const dt=document.getElementById('log-date').value;
-  const text=document.getElementById('log-text').value.trim();
+  const dt   = document.getElementById('log-date').value;
+  const text = document.getElementById('log-text').value.trim();
   if(!text) return;
   modalLogs.push({dt,html:text});
   document.getElementById('log-text').value='';
@@ -1374,14 +1377,16 @@ function addLog() {
 function deleteLog(i) { modalLogs.splice(i,1); renderEditLogs(); }
 
 function renderImgs() {
-  const grid=document.getElementById('img-grid');
-  let html=modalImgs.map((src,i)=>`
+  const grid = document.getElementById('img-grid');
+  let html   = modalImgs.map((src,i)=>`
     <div class="img-thumb">
       <img src="${src}" onclick="window.open('${src}','_blank')">
       <button class="del-img" onclick="deleteImg(${i})">✕</button>
     </div>`).join('');
-  if(modalImgs.length<8) html+=`<div class="upload-btn" onclick="document.getElementById('file-input').click()"><span class="up-icon">＋</span><span>新增圖片</span></div>`;
-  grid.innerHTML=html;
+  if(modalImgs.length<8)
+    html += `<div class="upload-btn" onclick="document.getElementById('file-input').click()">
+      <span class="up-icon">＋</span><span>新增圖片</span></div>`;
+  grid.innerHTML = html;
 }
 function handleImgUpload(e) {
   Array.from(e.target.files).slice(0,8-modalImgs.length).forEach(file=>{
@@ -1394,35 +1399,40 @@ function handleImgUpload(e) {
 function deleteImg(i) { modalImgs.splice(i,1); renderImgs(); }
 
 function saveCase() {
-  const data={
-    name:document.getElementById('f-name').value.trim(),
-    category:parseInt(document.getElementById('f-cat').value),
-    title:document.getElementById('f-title').value.trim(),
-    priority:document.getElementById('f-priority').value,
-    deadline:document.getElementById('f-deadline').value,
+  const data = {
+    name:      document.getElementById('f-name').value.trim(),
+    category:  parseInt(document.getElementById('f-cat').value),
+    title:     document.getElementById('f-title').value.trim(),
+    priority:  document.getElementById('f-priority').value,
     handleDate:document.getElementById('f-handle-date').value,
-    accident:document.getElementById('f-accident').value,
-    insurer:document.getElementById('f-insurer').value.trim(),
-    claimName:document.getElementById('f-claim-name').value.trim(),
-    logs:modalLogs, imgs:modalImgs,
+    deadline:  document.getElementById('f-deadline').value,
+    accident:  document.getElementById('f-accident').value,
+    insurer:   document.getElementById('f-insurer').value.trim(),
+    claimName: document.getElementById('f-claim-name').value.trim(),
+    logs:      modalLogs,
+    imgs:      modalImgs,
   };
   if(currentId){
-    const idx=cases.findIndex(x=>x.id===currentId);
-    if(idx>=0) cases[idx]={...cases[idx],...data};
+    const c = cases.find(x=>x.id===currentId);
+    if(c){ Object.assign(c,data); save(c); }
   } else {
-    cases.push({id:uid(),closed:false,closedAt:null,createdAt:new Date().toISOString(),...data});
+    const newCase = {id:uid(), closed:false, closedAt:null,
+      createdAt:new Date().toISOString(), ...data};
+    save(newCase);
   }
-  save(); renderAll(); closeEditModal();
+  closeEditModal();
 }
 
 function deleteCase() {
   if(!currentId) return;
   if(!confirm('確定要刪除此案件？此操作無法復原。')) return;
-  cases=cases.filter(x=>x.id!==currentId);
-  save(); renderAll(); closeEditModal();
+  saveDelete(currentId);
+  closeEditModal();
 }
 
-// ── Lightbox ──
+// ════════════════════════════════════
+//  LIGHTBOX
+// ════════════════════════════════════
 let lbImgs=[], lbIdx=0;
 function openLightbox(src) {
   const c=cases.find(x=>x.id===viewId);
@@ -1440,13 +1450,12 @@ function closeLightbox() { document.getElementById('lightbox').classList.remove(
 function closeLightboxBg(e) { if(e.target===document.getElementById('lightbox')) closeLightbox(); }
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('lightbox').classList.contains('open')) return;
-  if(e.key==='ArrowLeft') lbNav(-1);
+  if(e.key==='ArrowLeft')  lbNav(-1);
   if(e.key==='ArrowRight') lbNav(1);
-  if(e.key==='Escape') closeLightbox();
+  if(e.key==='Escape')     closeLightbox();
 });
-
-renderAll();
 </script>
+
 
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="closeLightboxBg(event)">
@@ -1460,10 +1469,7 @@ renderAll();
 <!-- MOBILE NAV BAR -->
 <div class="mobile-nav" id="mobile-nav">
   <button class="mobile-nav-btn active" id="mnav-pending" onclick="mobileTab('pending')">
-    <span class="nav-icon">📋</span>待辦
-  </button>
-  <button class="mobile-nav-btn" id="mnav-closed" onclick="mobileTab('closed')">
-    <span class="nav-icon">✅</span>已結案
+    <span class="nav-icon">📋</span>待辦案件
   </button>
 </div>
 <!-- FAB -->
