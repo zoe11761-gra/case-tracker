@@ -496,6 +496,26 @@
     line-height:1;
   }
   .mobile-search-clear:hover { color:var(--text2); }
+  /* ── desktop search box in topbar ── */
+  .desktop-search-wrap {
+    display:flex; align-items:center;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:20px; padding:0 10px 0 12px; gap:6px; height:34px;
+    transition:border-color .15s; min-width:200px;
+  }
+  .desktop-search-wrap:focus-within { border-color:var(--accent); }
+  .desktop-search-icon { color:var(--text3); font-size:15px; flex-shrink:0; }
+  .desktop-search-input {
+    background:none; border:none; outline:none;
+    color:var(--text); font-family:'Noto Sans TC',sans-serif;
+    font-size:13px; width:100%; min-width:0;
+  }
+  .desktop-search-input::placeholder { color:var(--text3); }
+  .desktop-search-clear {
+    background:none; border:none; color:var(--text3); font-size:13px;
+    cursor:pointer; padding:0; flex-shrink:0; line-height:1; transition:color .12s;
+  }
+  .desktop-search-clear:hover { color:var(--text2); }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -509,6 +529,7 @@
   .topbar { padding:0 16px; height:52px; }
   .topbar-tabs { display:none; }
   .btn-add-case { display:none; }
+  .desktop-search-wrap { display:none !important; }
 
   /* ── main wrapper ── */
   .main-wrapper { padding:0 0 100px; }
@@ -668,6 +689,15 @@
   <div class="topbar-tabs">
     <button class="tab-btn active" onclick="switchTab('pending')">待辦案件</button>
     <button class="tab-btn" onclick="switchTab('closed')">已結案</button>
+  </div>
+  <div class="desktop-search-wrap" id="desktop-search-wrap">
+    <span class="desktop-search-icon">⌕</span>
+    <input class="desktop-search-input" id="desktop-search" type="text"
+      placeholder="搜尋姓名・主題"
+      oninput="onDesktopSearch(this.value)"
+      autocomplete="off" autocorrect="off" autocapitalize="off">
+    <button class="desktop-search-clear" id="desktop-search-clear"
+      onclick="clearDesktopSearch()" style="display:none;">✕</button>
   </div>
   <button class="btn-add-case" onclick="openEditModal(null)">＋ 新增案件</button>
 </div>
@@ -968,6 +998,7 @@ let modalLogs = [];
 let modalImgs = [];
 let activeFilter = null; // null = 全部, 1-4 = 分類篩選
 let searchKeyword = ''; // mobile search string
+let desktopSearchKeyword = ''; // desktop search string
 
 // ── Firebase sync ──
 function save(c) {
@@ -1033,6 +1064,13 @@ function renderPending() {
   const tbody = document.getElementById('pending-tbody');
   if(!tbody) return;
   let data = cases.filter(c => !c.closed);
+  if(desktopSearchKeyword) {
+    const kw = desktopSearchKeyword.toLowerCase();
+    data = data.filter(c =>
+      (c.name||'').toLowerCase().includes(kw) ||
+      (c.title||'').toLowerCase().includes(kw)
+    );
+  }
   if(sortField) {
     data.sort((a,b) => {
       let va=a[sortField]||'', vb=b[sortField]||'';
@@ -1061,6 +1099,13 @@ function renderClosed() {
   const tbody = document.getElementById('closed-tbody');
   if(!tbody) return;
   let data = cases.filter(c => c.closed);
+  if(desktopSearchKeyword) {
+    const kw = desktopSearchKeyword.toLowerCase();
+    data = data.filter(c =>
+      (c.name||'').toLowerCase().includes(kw) ||
+      (c.title||'').toLowerCase().includes(kw)
+    );
+  }
   data.sort((a,b)=>{
     if(sortField==='closedAt'){let va=a.closedAt||'',vb=b.closedAt||'';return va<vb?-sortDir:va>vb?sortDir:0;}
     return (b.closedAt||'')<(a.closedAt||'')?-1:1;
@@ -1145,6 +1190,22 @@ function buildCards(data, isClosed) {
 // ════════════════════════════════════
 //  MOBILE FILTER BY CATEGORY
 // ════════════════════════════════════
+
+
+// ── Desktop search ──
+function onDesktopSearch(val) {
+  desktopSearchKeyword = val.trim();
+  document.getElementById('desktop-search-clear').style.display = desktopSearchKeyword ? '' : 'none';
+  renderPending();
+  renderClosed();
+}
+function clearDesktopSearch() {
+  desktopSearchKeyword = '';
+  document.getElementById('desktop-search').value = '';
+  document.getElementById('desktop-search-clear').style.display = 'none';
+  renderPending();
+  renderClosed();
+}
 
 // ── Mobile search ──
 function onMobileSearch(val) {
