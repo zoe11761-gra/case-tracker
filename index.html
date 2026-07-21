@@ -66,7 +66,17 @@
   .dash-card:nth-child(2)::before { background:var(--cat2); }
   .dash-card:nth-child(3)::before { background:var(--cat3); }
   .dash-card:nth-child(4)::before { background:var(--cat4); }
+  /* ── dashboard card: clickable + active filter state ── */
+  .dash-card { cursor:pointer; transition:border-color .18s, box-shadow .18s, transform .1s; }
   .dash-card:hover { border-color:var(--border2); }
+  .dash-card-active {
+    border-color:var(--accent) !important;
+    box-shadow:0 0 0 2px rgba(200,169,110,.15);
+  }
+  .dash-card:nth-child(1).dash-card-active { border-color:var(--cat1) !important; box-shadow:0 0 0 2px rgba(200,169,110,.2); }
+  .dash-card:nth-child(2).dash-card-active { border-color:var(--cat2) !important; box-shadow:0 0 0 2px rgba(90,143,204,.2); }
+  .dash-card:nth-child(3).dash-card-active { border-color:var(--cat3) !important; box-shadow:0 0 0 2px rgba(90,170,122,.2); }
+  .dash-card:nth-child(4).dash-card-active { border-color:var(--cat4) !important; box-shadow:0 0 0 2px rgba(212,128,74,.2); }
   .dash-label { font-size:11px; color:var(--text3); letter-spacing:.08em; margin-bottom:12px; text-transform:uppercase; }
   .dash-row { display:flex; align-items:baseline; gap:8px; }
   .dash-count { font-family:'DM Mono',monospace; font-size:40px; font-weight:500; line-height:1; }
@@ -459,16 +469,7 @@
   .sync-dot.offline { color:var(--red); }
 
   /* ── Mobile: dashboard cards as filter buttons ── */
-  .dash-card { cursor:pointer; transition:border-color .15s, transform .1s; }
   .dash-card:active { transform:scale(.97); }
-  .dash-card-active {
-    border-color:var(--accent) !important;
-    box-shadow:0 0 0 2px rgba(200,169,110,.2);
-  }
-  .dash-card:nth-child(1).dash-card-active { border-color:var(--cat1) !important; box-shadow:0 0 0 2px rgba(200,169,110,.2); }
-  .dash-card:nth-child(2).dash-card-active { border-color:var(--cat2) !important; box-shadow:0 0 0 2px rgba(90,143,204,.2); }
-  .dash-card:nth-child(3).dash-card-active { border-color:var(--cat3) !important; box-shadow:0 0 0 2px rgba(90,170,122,.2); }
-  .dash-card:nth-child(4).dash-card-active { border-color:var(--cat4) !important; box-shadow:0 0 0 2px rgba(212,128,74,.2); }
 
   /* ── mobile search box ── */
   .mobile-search-wrap {
@@ -1064,6 +1065,9 @@ function renderPending() {
   const tbody = document.getElementById('pending-tbody');
   if(!tbody) return;
   let data = cases.filter(c => !c.closed);
+  if(activeFilter) {
+    data = data.filter(c => c.category == activeFilter);
+  }
   if(desktopSearchKeyword) {
     const kw = desktopSearchKeyword.toLowerCase();
     data = data.filter(c =>
@@ -1221,15 +1225,16 @@ function clearSearch() {
 }
 
 function filterByCategory(cat) {
-  if(!isMobile()) return; // desktop: no filter behaviour
   activeFilter = (activeFilter === cat) ? null : cat; // toggle
   updateFilterUI();
+  renderPending();
   renderMobilePending();
 }
 
 function clearFilter() {
   activeFilter = null;
   updateFilterUI();
+  renderPending();
   renderMobilePending();
 }
 
