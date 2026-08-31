@@ -520,6 +520,15 @@
     cursor:pointer; padding:0; flex-shrink:0; line-height:1; transition:color .12s;
   }
   .desktop-search-clear:hover { color:var(--text2); }
+  .vp-upload-btn {
+    aspect-ratio:1; font-size:11px;
+  }
+  /* vp-img-thumb: show del button on hover */
+  #vp-img-grid .img-thumb .del-img { cursor:pointer; }
+  /* vp-img-grid uses same grid as img-grid */
+  #vp-img-grid {
+    display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:10px;
+  }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -647,7 +656,7 @@
   .vp-log-date-col { min-width:78px; max-width:78px; font-size:12px; }
   .vp-log-body { font-size:14px; }
   .vp-add-top { grid-template-columns:110px 1fr; }
-  .vp-img-grid { grid-template-columns:repeat(3,1fr); }
+  #vp-img-grid { grid-template-columns:repeat(3,1fr) !important; }
   .vp-section-heading { font-size:14px; }
   .vp-progress-title-lg { font-size:14px; }
   .btn-edit-case { font-size:12px; padding:5px 12px; }
@@ -844,11 +853,12 @@
     </div>
 
     <!-- 圖片 -->
-    <div class="vp-progress-card" id="vp-img-section" style="display:none;">
+    <div class="vp-progress-card" id="vp-img-section">
       <div class="vp-progress-header">
-        <span class="vp-progress-title">相關圖片</span>
+        <div class="vp-progress-title-lg">相關圖片</div>
       </div>
       <div class="vp-img-grid" id="vp-img-grid"></div>
+      <input type="file" id="vp-file-input" accept="image/*" multiple style="display:none" onchange="vpHandleImgUpload(event)">
     </div>
 
   </div>
@@ -1329,19 +1339,64 @@ function openView(id) {
 
   renderViewLogs(c);
 
-  const imgSec  = document.getElementById('vp-img-section');
-  const imgGrid = document.getElementById('vp-img-grid');
-  if(c.imgs&&c.imgs.length){
-    imgSec.style.display='';
-    imgGrid.innerHTML = c.imgs.map((src,i)=>
-      `<div class="vp-img-thumb"><img src="${src}" onclick="openLightbox('${src}')"></div>`
-    ).join('');
-  } else { imgSec.style.display='none'; }
+  renderViewImgs(cases.find(x=>x.id===viewId));
 
   document.getElementById('vp-add-form').classList.remove('open');
   document.getElementById('vp-log-date').value  = new Date().toISOString().slice(0,10);
   document.getElementById('vp-log-text').value  = '';
   document.getElementById('view-overlay').classList.add('open');
+}
+
+
+function renderViewImgs(c) {
+  if(!c) return;
+  const imgGrid = document.getElementById('vp-img-grid');
+  if(!imgGrid) return;
+  let html = (c.imgs||[]).map((src,i)=>`
+    <div class="vp-img-thumb">
+      <img src="${src}" onclick="openLightbox('${src}')">
+      <button class="del-img" onclick="vpDeleteImg(${i})">✕</button>
+    </div>`).join('');
+  // always show upload button (max 20 imgs)
+  if((c.imgs||[]).length < 20) {
+    html += `<div class="upload-btn vp-upload-btn" onclick="document.getElementById('vp-file-input').click()">
+      <span class="up-icon">＋</span><span>新增圖片</span>
+    </div>`;
+  }
+  imgGrid.innerHTML = html;
+}
+
+function vpHandleImgUpload(e) {
+  const c = cases.find(x=>x.id===viewId);
+  if(!c) return;
+  if(!c.imgs) c.imgs=[];
+  const remaining = 20 - c.imgs.length;
+  const files = Array.from(e.target.files).slice(0, remaining);
+  let loaded = 0;
+  files.forEach(file => {
+    const r = new FileReader();
+    r.onload = ev => {
+      c.imgs.push(ev.target.result);
+      loaded++;
+      if(loaded === files.length) {
+        save(c);
+        renderViewImgs(c);
+      }
+    };
+    r.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function vpDeleteImg(i) {
+  const c = cases.find(x=>x.id===viewId);
+  if(!c || !c.imgs) return;
+  if(!confirm('確定刪除此圖片？')) return;
+  c.imgs.splice(i, 1);
+  save(c);
+  renderViewImgs(c);
+  // update lightbox imgs
+  lbImgs = c.imgs;
 }
 
 function renderViewLogs(c) {
