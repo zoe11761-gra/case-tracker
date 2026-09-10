@@ -538,6 +538,22 @@
 ════════════════════════════════════ */
 @media (max-width: 768px) {
 
+  /* ── mobile bottom nav ── */
+  .mobile-nav {
+    display:flex !important;
+    position:fixed; bottom:0; left:0; right:0; z-index:150;
+    background:var(--surface); border-top:1px solid var(--border);
+    height:64px; padding-bottom:env(safe-area-inset-bottom);
+  }
+  .mobile-nav-btn {
+    flex:1; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:3px;
+    border:none; background:transparent; cursor:pointer;
+    color:var(--text3); font-size:11px; letter-spacing:.04em;
+    font-family:'Noto Sans TC',sans-serif; transition:color .15s;
+  }
+  .mobile-nav-btn .nav-icon { font-size:20px; line-height:1; }
+  .mobile-nav-btn.active { color:var(--accent); }
   /* ── topbar: 只留 logo，桌面 tabs 隱藏 ── */
   .topbar { padding:0 16px; height:52px; }
   .topbar-tabs { display:none; }
@@ -545,7 +561,7 @@
   .desktop-search-wrap { display:none !important; }
 
   /* ── main wrapper ── */
-  .main-wrapper { padding:0 0 100px; }
+  .main-wrapper { padding:0 0 80px; }
 
   /* ── sticky dashboard: 2×2 grid ── */
   .dashboard-sticky {
@@ -568,7 +584,7 @@
   /* ── FAB (浮動新增按鈕) ── */
   .mobile-fab {
     display:flex !important;
-    position:fixed; bottom:24px; right:18px; z-index:151;
+    position:fixed; bottom:80px; right:18px; z-index:151;
     width:52px; height:52px; border-radius:50%;
     background:var(--accent); border:none; color:#1a1200;
     font-size:26px; font-weight:300; line-height:1;
@@ -686,6 +702,7 @@
 /* Desktop: hide mobile-only elements */
 @media (min-width: 769px) {
   .mobile-card-list { display:none; }
+  .mobile-nav { display:none !important; }
   .mobile-fab { display:none; }
 }
 </style>
@@ -1150,7 +1167,7 @@ function isMobile() { return window.innerWidth <= 768; }
 
 function renderMobileCards() {
   renderMobilePending();
-  // no closed tab on mobile
+  renderMobileClosed();
 }
 
 function renderMobilePending() {
@@ -1167,6 +1184,15 @@ function renderMobilePending() {
   }
   el.innerHTML = data.length ? buildCards(data, false)
     : `<div class="mobile-empty">${activeFilter ? CAT_NAMES[activeFilter] + '<br>目前無待辦案件' : '目前無待辦案件 🎉'}</div>`;
+}
+
+function renderMobileClosed() {
+  const el = document.getElementById('closed-cards');
+  if(!el) return;
+  let data = cases.filter(c => c.closed);
+  data.sort((a,b) => (b.closedAt||'') > (a.closedAt||'') ? 1 : -1);
+  el.innerHTML = data.length ? buildCards(data, true)
+    : '<div class="mobile-empty">尚無已結案件</div>';
 }
 
 function buildCards(data, isClosed) {
@@ -1302,6 +1328,10 @@ function switchTab(tab) {
 // ── Mobile tab (pending only) ──
 function mobileTab(tab) {
   switchTab(tab);
+  const mp = document.getElementById('mnav-pending');
+  const mc = document.getElementById('mnav-closed');
+  if(mp) mp.classList.toggle('active', tab==='pending');
+  if(mc) mc.classList.toggle('active', tab==='closed');
 }
 
 // ════════════════════════════════════
@@ -1681,6 +1711,15 @@ document.addEventListener('keydown',e=>{
   <div class="lightbox-counter" id="lb-counter"></div>
 </div>
 
+<!-- MOBILE NAV BAR -->
+<div class="mobile-nav" id="mobile-nav">
+  <button class="mobile-nav-btn active" id="mnav-pending" onclick="mobileTab('pending')">
+    <span class="nav-icon">📋</span>待辦
+  </button>
+  <button class="mobile-nav-btn" id="mnav-closed" onclick="mobileTab('closed')">
+    <span class="nav-icon">✅</span>已結案
+  </button>
+</div>
 <!-- FAB -->
 <button class="mobile-fab" onclick="openEditModal(null)">＋</button>
 </body>
