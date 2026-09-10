@@ -529,6 +529,26 @@
   #vp-img-grid {
     display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:10px;
   }
+  /* ── mobile 已結案小按鍵（topbar 右側）── */
+  .mobile-closed-btn {
+    display:none;
+    padding:5px 12px;
+    border-radius:16px;
+    border:1px solid var(--border2);
+    background:transparent;
+    color:var(--text3);
+    font-family:'Noto Sans TC',sans-serif;
+    font-size:12px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:all .15s;
+    margin-left:auto;
+  }
+  .mobile-closed-btn.active {
+    background:var(--green-dim,rgba(90,170,122,0.12));
+    border-color:var(--green);
+    color:var(--green);
+  }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -538,26 +558,12 @@
 ════════════════════════════════════ */
 @media (max-width: 768px) {
 
-  /* ── mobile bottom nav ── */
-  .mobile-nav {
-    display:flex !important;
-    position:fixed; bottom:0; left:0; right:0; z-index:150;
-    background:var(--surface); border-top:1px solid var(--border);
-    height:64px; padding-bottom:env(safe-area-inset-bottom);
-  }
-  .mobile-nav-btn {
-    flex:1; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:3px;
-    border:none; background:transparent; cursor:pointer;
-    color:var(--text3); font-size:11px; letter-spacing:.04em;
-    font-family:'Noto Sans TC',sans-serif; transition:color .15s;
-  }
-  .mobile-nav-btn .nav-icon { font-size:20px; line-height:1; }
-  .mobile-nav-btn.active { color:var(--accent); }
   /* ── topbar: 只留 logo，桌面 tabs 隱藏 ── */
   .topbar { padding:0 16px; height:52px; }
   .topbar-tabs { display:none; }
   .btn-add-case { display:none; }
+  .mobile-closed-btn { display:inline-flex !important; align-items:center; }
+  .desktop-search-wrap { display:none !important; }
   .desktop-search-wrap { display:none !important; }
 
   /* ── main wrapper ── */
@@ -584,7 +590,7 @@
   /* ── FAB (浮動新增按鈕) ── */
   .mobile-fab {
     display:flex !important;
-    position:fixed; bottom:80px; right:18px; z-index:151;
+    position:fixed; bottom:24px; right:18px; z-index:151;
     width:52px; height:52px; border-radius:50%;
     background:var(--accent); border:none; color:#1a1200;
     font-size:26px; font-weight:300; line-height:1;
@@ -704,6 +710,7 @@
   .mobile-card-list { display:none; }
   .mobile-nav { display:none !important; }
   .mobile-fab { display:none; }
+  .mobile-closed-btn { display:none !important; }
 }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -716,6 +723,7 @@
 <div id="loading-bar" style="position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);z-index:999;display:none;"></div>
 <div class="topbar">
   <div class="topbar-logo" onclick="clearFilter()" style="cursor:pointer;">草草・案件追蹤明細表<span class="sync-dot" id="sync-dot" title="Firebase 已連線">●</span></div>
+  <button class="mobile-closed-btn" id="mobile-closed-btn" onclick="mobileToggleClosed()">已結案</button>
   <div class="topbar-tabs">
     <button class="tab-btn active" onclick="switchTab('pending')">待辦案件</button>
     <button class="tab-btn" onclick="switchTab('closed')">已結案</button>
@@ -1326,12 +1334,26 @@ function switchTab(tab) {
 }
 
 // ── Mobile tab (pending only) ──
+
+// ── Mobile 已結案切換 ──
+let mobileShowClosed = false;
+function mobileToggleClosed() {
+  mobileShowClosed = !mobileShowClosed;
+  const btn = document.getElementById('mobile-closed-btn');
+  if(btn) btn.classList.toggle('active', mobileShowClosed);
+  if(mobileShowClosed) {
+    mobileTab('closed');
+  } else {
+    mobileTab('pending');
+  }
+}
+
 function mobileTab(tab) {
   switchTab(tab);
-  const mp = document.getElementById('mnav-pending');
-  const mc = document.getElementById('mnav-closed');
-  if(mp) mp.classList.toggle('active', tab==='pending');
-  if(mc) mc.classList.toggle('active', tab==='closed');
+  // sync mobile closed btn state
+  const btn = document.getElementById('mobile-closed-btn');
+  if(btn) btn.classList.toggle('active', tab==='closed');
+  mobileShowClosed = (tab==='closed');
 }
 
 // ════════════════════════════════════
@@ -1711,15 +1733,6 @@ document.addEventListener('keydown',e=>{
   <div class="lightbox-counter" id="lb-counter"></div>
 </div>
 
-<!-- MOBILE NAV BAR -->
-<div class="mobile-nav" id="mobile-nav">
-  <button class="mobile-nav-btn active" id="mnav-pending" onclick="mobileTab('pending')">
-    <span class="nav-icon">📋</span>待辦
-  </button>
-  <button class="mobile-nav-btn" id="mnav-closed" onclick="mobileTab('closed')">
-    <span class="nav-icon">✅</span>已結案
-  </button>
-</div>
 <!-- FAB -->
 <button class="mobile-fab" onclick="openEditModal(null)">＋</button>
 </body>
