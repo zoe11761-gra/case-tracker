@@ -7,32 +7,33 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="案件追蹤">
 <title>草草・案件追蹤明細表</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700;900&family=Alfa+Slab+One&family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #16181c;
-    --surface: #1e2128;
-    --surface2: #252931;
-    --surface3: #2d3139;
-    --border: #333842;
-    --border2: #404550;
-    --text: #e8e4dd;
-    --text2: #9a9590;
-    --text3: #6b6760;
-    --accent: #c8a96e;
-    --accent2: #e8c98e;
-    --accent-dim: rgba(200,169,110,0.12);
-    --red: #e05555;
-    --red-dim: rgba(224,85,85,0.12);
-    --green: #5aaa7a;
-    --blue: #5a8fcc;
-    --blue-dim: rgba(90,143,204,0.12);
-    --cat1: #c8a96e;
-    --cat2: #5a8fcc;
-    --cat3: #5aaa7a;
-    --cat4: #d4804a;
-    --radius: 8px;
-    --radius2: 12px;
+    --bg: #e6d3a8;
+    --surface: #f3e6c4;
+    --surface2: #ecdcb2;
+    --surface3: #e0cb98;
+    --border: #2b2118;
+    --border2: #2b2118;
+    --text: #2b2118;
+    --text2: #5c4630;
+    --text3: #8b7455;
+    --accent: #b8402a;
+    --accent2: #d4583a;
+    --accent-dim: rgba(184,64,42,0.14);
+    --red: #b8321e;
+    --red-dim: rgba(184,50,30,0.14);
+    --green: #5b7a35;
+    --blue: #25607a;
+    --blue-dim: rgba(37,96,122,0.14);
+    --cat1: #d9a22b;
+    --cat2: #25607a;
+    --cat3: #5b7a35;
+    --cat4: #d2691e;
+    --radius: 4px;
+    --radius2: 6px;
+    --ink: #2b2118;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--text); font-family:'Noto Sans TC',sans-serif; font-size:14px; min-height:100vh; }
@@ -74,12 +75,12 @@
   .dash-card:hover { border-color:var(--border2); }
   .dash-card-active {
     border-color:var(--accent) !important;
-    box-shadow:0 0 0 2px rgba(200,169,110,.15);
+    box-shadow:0 0 0 2px rgba(184,64,42,.15);
   }
-  .dash-card:nth-child(1).dash-card-active { border-color:var(--cat1) !important; box-shadow:0 0 0 2px rgba(200,169,110,.2); }
-  .dash-card:nth-child(2).dash-card-active { border-color:var(--cat2) !important; box-shadow:0 0 0 2px rgba(90,143,204,.2); }
-  .dash-card:nth-child(3).dash-card-active { border-color:var(--cat3) !important; box-shadow:0 0 0 2px rgba(90,170,122,.2); }
-  .dash-card:nth-child(4).dash-card-active { border-color:var(--cat4) !important; box-shadow:0 0 0 2px rgba(212,128,74,.2); }
+  .dash-card:nth-child(1).dash-card-active { border-color:var(--cat1) !important; box-shadow:0 0 0 2px rgba(184,64,42,.2); }
+  .dash-card:nth-child(2).dash-card-active { border-color:var(--cat2) !important; box-shadow:0 0 0 2px rgba(37,96,122,.2); }
+  .dash-card:nth-child(3).dash-card-active { border-color:var(--cat3) !important; box-shadow:0 0 0 2px rgba(91,122,53,.2); }
+  .dash-card:nth-child(4).dash-card-active { border-color:var(--cat4) !important; box-shadow:0 0 0 2px rgba(210,105,30,.2); }
   .dash-label { font-size:11px; color:var(--text3); letter-spacing:.08em; margin-bottom:12px; text-transform:uppercase; }
   .dash-row { display:flex; align-items:baseline; gap:8px; }
   .dash-count { font-family:'DM Mono',monospace; font-size:40px; font-weight:500; line-height:1; }
@@ -117,16 +118,16 @@
   .td-check { text-align:center; width:44px; }
 
   .cat-badge { display:inline-block; font-size:12px; padding:4px 10px; border-radius:20px; white-space:nowrap; font-weight:500; }
-  .cat-1 { background:rgba(200,169,110,.12); color:var(--cat1); border:1px solid rgba(200,169,110,.2); }
-  .cat-2 { background:rgba(90,143,204,.12); color:var(--cat2); border:1px solid rgba(90,143,204,.2); }
-  .cat-3 { background:rgba(90,170,122,.10); color:var(--cat3); border:1px solid rgba(90,170,122,.2); }
-  .cat-4 { background:rgba(212,128,74,.12); color:var(--cat4); border:1px solid rgba(212,128,74,.2); }
+  .cat-1 { background:rgba(184,64,42,.12); color:var(--cat1); border:1px solid rgba(184,64,42,.2); }
+  .cat-2 { background:rgba(37,96,122,.12); color:var(--cat2); border:1px solid rgba(37,96,122,.2); }
+  .cat-3 { background:rgba(91,122,53,.10); color:var(--cat3); border:1px solid rgba(91,122,53,.2); }
+  .cat-4 { background:rgba(210,105,30,.12); color:var(--cat4); border:1px solid rgba(210,105,30,.2); }
 
   .pri-badge { display:inline-block; font-size:12px; padding:4px 10px; border-radius:4px; white-space:nowrap; }
   .pri-urgent { background:var(--red-dim); color:var(--red); }
   .pri-track { background:var(--blue-dim); color:var(--blue); }
   .pri-record { background:var(--surface3); color:var(--text3); }
-  .pri-submitted { background:rgba(90,170,122,.12); color:var(--green); }
+  .pri-submitted { background:rgba(91,122,53,.12); color:var(--green); }
 
   .deadline-urgent { color:var(--red); font-weight:500; font-family:'DM Mono',monospace; font-size:15px; }
   .deadline-normal { color:var(--text2); font-family:'DM Mono',monospace; font-size:15px; }
@@ -354,8 +355,8 @@
   .add-log-area { display:flex; flex-direction:column; gap:8px; }
   .add-log-top { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:start; }
   .add-log-toolbar { display:flex; align-items:center; gap:6px; padding:4px 0; }
-  .btn-add-log { background:var(--accent-dim); border:1px solid rgba(200,169,110,.3); color:var(--accent); padding:8px 16px; border-radius:var(--radius); cursor:pointer; font-size:13px; white-space:nowrap; transition:all .15s; }
-  .btn-add-log:hover { background:rgba(200,169,110,.22); }
+  .btn-add-log { background:var(--accent-dim); border:1px solid rgba(184,64,42,.3); color:var(--accent); padding:8px 16px; border-radius:var(--radius); cursor:pointer; font-size:13px; white-space:nowrap; transition:all .15s; }
+  .btn-add-log:hover { background:rgba(184,64,42,.22); }
 
   /* img in edit modal */
   .img-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
@@ -370,15 +371,15 @@
   .modal-footer { display:flex; gap:10px; padding:16px 28px 24px; border-top:1px solid var(--border); justify-content:flex-end; }
   .btn-cancel { background:var(--surface3); border:1px solid var(--border); color:var(--text2); padding:9px 22px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-family:'Noto Sans TC',sans-serif; transition:all .15s; }
   .btn-cancel:hover { color:var(--text); border-color:var(--border2); }
-  .btn-save { background:var(--accent); border:none; color:#1a1200; padding:9px 26px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-weight:600; font-family:'Noto Sans TC',sans-serif; transition:all .15s; }
+  .btn-save { background:var(--accent); border:none; color:#f3e6c4; padding:9px 26px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-weight:600; font-family:'Noto Sans TC',sans-serif; transition:all .15s; }
   .btn-save:hover { background:var(--accent2); }
-  .btn-delete { background:var(--red-dim); border:1px solid rgba(224,85,85,.2); color:var(--red); padding:9px 22px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-family:'Noto Sans TC',sans-serif; transition:all .15s; margin-right:auto; }
-  .btn-delete:hover { background:rgba(224,85,85,.22); }
+  .btn-delete { background:var(--red-dim); border:1px solid rgba(184,50,30,.2); color:var(--red); padding:9px 22px; border-radius:var(--radius); cursor:pointer; font-size:14px; font-family:'Noto Sans TC',sans-serif; transition:all .15s; margin-right:auto; }
+  .btn-delete:hover { background:rgba(184,50,30,.22); }
 
   .btn-sm { padding:7px 14px; border-radius:6px; font-size:13px; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .15s; border:1px solid var(--border2); background:var(--surface); color:var(--text2); }
   .btn-sm:hover { color:var(--text); border-color:var(--border2); background:var(--surface3); }
-  .btn-sm.accent { background:var(--accent-dim); border-color:rgba(200,169,110,.3); color:var(--accent); }
-  .btn-sm.accent:hover { background:rgba(200,169,110,.22); }
+  .btn-sm.accent { background:var(--accent-dim); border-color:rgba(184,64,42,.3); color:var(--accent); }
+  .btn-sm.accent:hover { background:rgba(184,64,42,.22); }
 
   .crash-fields { display:none; }
   .crash-fields.visible { display:contents; }
@@ -415,8 +416,8 @@
   .vp-edit-top { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:start; }
   .vp-edit-toolbar { display:flex; align-items:center; gap:6px; }
   .vp-edit-actions { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
-  .btn-sm.danger { background:var(--red-dim); border-color:rgba(224,85,85,.2); color:var(--red); margin-right:auto; }
-  .btn-sm.danger:hover { background:rgba(224,85,85,.22); }
+  .btn-sm.danger { background:var(--red-dim); border-color:rgba(184,50,30,.2); color:var(--red); margin-right:auto; }
+  .btn-sm.danger:hover { background:rgba(184,50,30,.22); }
 
   /* ── 基本資料大標題 ── */
   .vp-section-heading {
@@ -546,7 +547,7 @@
     margin-left:auto;
   }
   .mobile-closed-btn.active {
-    background:var(--green-dim,rgba(90,170,122,0.12));
+    background:var(--green-dim,rgba(91,122,53,0.12));
     border-color:var(--green);
     color:var(--green);
   }
@@ -561,13 +562,13 @@
   }
   .seg-btn:hover { border-color:var(--border2); color:var(--text); }
   .seg-btn.active { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); font-weight:500; }
-  .seg-btn.seg-cat-1.active { border-color:var(--cat1); color:var(--cat1); background:rgba(200,169,110,.12); }
-  .seg-btn.seg-cat-2.active { border-color:var(--cat2); color:var(--cat2); background:rgba(90,143,204,.12); }
-  .seg-btn.seg-cat-3.active { border-color:var(--cat3); color:var(--cat3); background:rgba(90,170,122,.12); }
-  .seg-btn.seg-cat-4.active { border-color:var(--cat4); color:var(--cat4); background:rgba(212,128,74,.12); }
+  .seg-btn.seg-cat-1.active { border-color:var(--cat1); color:var(--cat1); background:rgba(184,64,42,.12); }
+  .seg-btn.seg-cat-2.active { border-color:var(--cat2); color:var(--cat2); background:rgba(37,96,122,.12); }
+  .seg-btn.seg-cat-3.active { border-color:var(--cat3); color:var(--cat3); background:rgba(91,122,53,.12); }
+  .seg-btn.seg-cat-4.active { border-color:var(--cat4); color:var(--cat4); background:rgba(210,105,30,.12); }
   .seg-btn.seg-pri-urgent.active { border-color:var(--red); color:var(--red); background:var(--red-dim); }
   .seg-btn.seg-pri-track.active { border-color:var(--blue); color:var(--blue); background:var(--blue-dim); }
-  .seg-btn.seg-pri-submitted.active { border-color:var(--green); color:var(--green); background:rgba(90,170,122,.12); }
+  .seg-btn.seg-pri-submitted.active { border-color:var(--green); color:var(--green); background:rgba(91,122,53,.12); }
   .triple-row { grid-template-columns:1fr 1.7fr 1fr; }
   /* ── 車禍：我方 / 對方 ── */
   .side-row { align-items:start; }
@@ -619,10 +620,10 @@
     display:flex !important;
     position:fixed; bottom:24px; right:18px; z-index:151;
     width:52px; height:52px; border-radius:50%;
-    background:var(--accent); border:none; color:#1a1200;
+    background:var(--accent); border:none; color:#f3e6c4;
     font-size:26px; font-weight:300; line-height:1;
     align-items:center; justify-content:center;
-    box-shadow:0 4px 20px rgba(200,169,110,.45);
+    box-shadow:0 4px 20px rgba(184,64,42,.45);
     cursor:pointer; transition:transform .15s, background .15s;
   }
   .mobile-fab:active { transform:scale(.93); }
@@ -741,6 +742,80 @@
   .mobile-fab { display:none; }
   .mobile-closed-btn { display:none !important; }
 }
+  /* ═════ VINTAGE POSTER ═════ */
+  body { background-color:var(--bg);
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .22  0 0 0 0 .08  0 0 0 .38 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+      radial-gradient(ellipse at 50% 40%, rgba(255,246,214,.55) 0%, rgba(120,80,30,.22) 100%);
+    background-attachment:fixed; }
+  .topbar { background:var(--ink); border-bottom:4px solid var(--accent); box-shadow:0 4px 0 var(--cat1); }
+  .topbar-logo { font-family:'Noto Serif TC',serif; font-weight:900; color:var(--cat1); font-size:18px; letter-spacing:.1em; }
+  .tab-btn { color:#d8c79c; border-radius:0; font-weight:500; }
+  .tab-btn.active { background:var(--cat1); color:var(--ink); }
+  .btn-add-case { background:var(--accent); color:#f3e6c4; border:2px solid #f3e6c4; border-radius:0; font-weight:700; box-shadow:3px 3px 0 var(--cat1); }
+  .btn-add-case:hover { background:var(--accent2); }
+  .dash-card, .modal, .view-panel, .vp-progress-card, .case-card, .table-wrap, table, .vp-side, .side-card {
+    border:2px solid var(--ink) !important; border-radius:var(--radius2) !important; }
+  .dash-card { box-shadow:5px 5px 0 var(--ink); background:var(--surface); }
+  .dash-card:hover { transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--ink); }
+  .dash-card-active { box-shadow:5px 5px 0 var(--ink) !important; background:#f8ecc8 !important; }
+  .dash-count { font-family:'Alfa Slab One','Noto Serif TC',serif !important; font-weight:400 !important; }
+  .section-title, .modal-title, .vp-title { font-family:'Noto Serif TC',serif; font-weight:900; letter-spacing:.05em; }
+  .modal, .view-panel { box-shadow:8px 8px 0 var(--ink) !important; background:var(--surface); }
+  .modal-header, .vp-header { border-bottom:3px double var(--ink) !important; }
+  .form-input, .form-select, .form-textarea { background:#f8eed2 !important; border:2px solid var(--ink) !important; border-radius:3px !important; }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { box-shadow:3px 3px 0 var(--accent) !important; outline:none; }
+  .btn-save { background:var(--accent); color:#f3e6c4; border:2px solid var(--ink); border-radius:0; box-shadow:3px 3px 0 var(--ink); }
+  .btn-cancel, .btn-sm, .btn-edit-case { border:2px solid var(--ink) !important; border-radius:0 !important; background:var(--surface); color:var(--ink); }
+  .btn-delete, .btn-sm.danger { border:2px solid var(--red) !important; border-radius:0 !important; }
+  .cat-badge, .pri-badge { border-radius:0 !important; border:1.5px solid currentColor; font-weight:700; }
+  th { text-transform:none; letter-spacing:.08em; background:var(--ink) !important; color:var(--cat1) !important; }
+  .seg-btn { border:2px solid var(--ink); border-radius:0; background:#f8eed2; color:var(--ink); font-weight:700; }
+  .seg-btn.active { box-shadow:3px 3px 0 var(--ink); transform:translate(-1px,-1px); }
+  .seg-btn.seg-cat-1.active { background:var(--cat1); color:var(--ink); border-color:var(--ink); }
+  .seg-btn.seg-cat-2.active { background:var(--cat2); color:#f3e6c4; border-color:var(--ink); }
+  .seg-btn.seg-cat-3.active { background:var(--cat3); color:#f3e6c4; border-color:var(--ink); }
+  .seg-btn.seg-cat-4.active { background:var(--cat4); color:#f3e6c4; border-color:var(--ink); }
+  .seg-btn.seg-pri-urgent.active { background:var(--red); color:#f3e6c4; border-color:var(--ink); }
+  .seg-btn.seg-pri-track.active { background:var(--blue); color:#f3e6c4; border-color:var(--ink); }
+  .seg-btn.seg-pri-submitted.active { background:var(--green); color:#f3e6c4; border-color:var(--ink); }
+  .seg-btn.seg-pri-record.active { background:var(--text2); color:#f3e6c4; border-color:var(--ink); }
+  .side-card { background:var(--surface2); box-shadow:4px 4px 0 var(--ink); }
+  .side-title { font-family:'Noto Serif TC',serif; font-weight:900; font-size:16px; padding:2px 10px; display:inline-block; align-self:flex-start; color:#f3e6c4 !important; }
+  .side-our { background:var(--accent); } .side-their { background:var(--blue); }
+  .contact-box { display:grid; grid-template-columns:1fr 1fr; border:2px solid var(--ink); background:#f8eed2; }
+  .contact-cell { padding:8px 10px; display:flex; flex-direction:column; gap:4px; }
+  .contact-cell + .contact-cell { border-left:2px solid var(--ink); }
+  .contact-cell .form-input { border:none !important; border-bottom:1.5px dashed var(--text3) !important; background:transparent !important; border-radius:0 !important; padding:6px 2px; }
+  .contact-cell .form-input:focus { box-shadow:none !important; border-bottom-color:var(--accent) !important; }
+  /* view side cards */
+  .vp-sides { grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .vp-side { background:var(--surface2); box-shadow:4px 4px 0 var(--ink); padding:0; overflow:hidden; display:flex; flex-direction:column; }
+  .vp-side-title { font-family:'Noto Serif TC',serif; font-weight:900; font-size:15px; letter-spacing:.2em; padding:6px 14px; color:#f3e6c4; border-bottom:2px solid var(--ink); }
+  .vp-our .vp-side-title { background:var(--accent); } .vp-their .vp-side-title { background:var(--blue); }
+  .vp-cell { padding:8px 14px; display:flex; flex-direction:column; gap:2px; border-bottom:2px solid var(--ink); background:#f8eed2; }
+  .vp-side > .vp-cell:last-child { border-bottom:none; }
+  .vp-cell-row { display:grid; grid-template-columns:1fr 1fr; border-bottom:2px solid var(--ink); }
+  .vp-cell-row .vp-cell { border-bottom:none; }
+  .vp-cell-row .vp-cell + .vp-cell { border-left:2px solid var(--ink); }
+  .vp-cell span { font-size:11px; color:var(--text3); letter-spacing:.1em; }
+  .vp-cell b { font-size:16px; font-weight:700; color:var(--ink); word-break:break-all; }
+  .vp-cell b.mono { font-family:'DM Mono',monospace; font-size:15px; }
+  .vp-cell b.empty { color:var(--text3); font-weight:400; }
+  .fab, .mobile-fab { border:3px solid var(--ink) !important; box-shadow:4px 4px 0 var(--ink) !important; }
+  @media (max-width:768px){
+    .vp-sides { grid-template-columns:1fr; }
+    .contact-box { grid-template-columns:1fr; }
+    .contact-cell + .contact-cell { border-left:none; border-top:2px solid var(--ink); }
+    .case-card { box-shadow:3px 3px 0 var(--ink); }
+  }
+  .dashboard-sticky { background:transparent !important; backdrop-filter:none !important; border:none !important; }
+  .cat-badge.cat-1 { color:#7a5200 !important; background:rgba(217,162,43,.3) !important; }
+  .form-row.side-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
+  .side-card { min-width:0; }
+  .contact-box { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .contact-cell { min-width:0; }
+  @media (max-width:768px){ .form-row.side-row { grid-template-columns:minmax(0,1fr) !important; } .contact-box { grid-template-columns:minmax(0,1fr); } }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -986,9 +1061,11 @@
             <label class="form-label">保險公司</label>
             <input class="form-input" id="f-our-insurer" placeholder="例：富邦產險">
           </div>
-          <div class="form-group">
-            <label class="form-label">理賠人員（姓名＋電話）</label>
-            <input class="form-input" id="f-our-claim" placeholder="例：王小明　02-2345-6789">
+          <div class="contact-box">
+            <div class="contact-cell"><label class="form-label">理賠人員姓名</label>
+              <input class="form-input" id="f-our-cname" placeholder="例：王小明"></div>
+            <div class="contact-cell"><label class="form-label">理賠電話</label>
+              <input class="form-input" id="f-our-cphone" type="tel" placeholder="02-2345-6789"></div>
           </div>
           <div class="form-group">
             <label class="form-label">賠案號碼（選填）</label>
@@ -1001,9 +1078,11 @@
             <label class="form-label">保險公司</label>
             <input class="form-input" id="f-their-insurer" placeholder="例：國泰產險">
           </div>
-          <div class="form-group">
-            <label class="form-label">理賠人員（姓名＋電話）</label>
-            <input class="form-input" id="f-their-claim" placeholder="例：李小華　02-2345-6789">
+          <div class="contact-box">
+            <div class="contact-cell"><label class="form-label">理賠人員姓名</label>
+              <input class="form-input" id="f-their-cname" placeholder="例：李小華"></div>
+            <div class="contact-cell"><label class="form-label">理賠電話</label>
+              <input class="form-input" id="f-their-cphone" type="tel" placeholder="02-2345-6789"></div>
           </div>
           <div class="form-group">
             <label class="form-label">賠案號碼（選填）</label>
@@ -1074,22 +1153,30 @@ const casesRef = db.ref('cases');
 // ═══════════════════════════════════════════════════
 const CAT_NAMES = {1:'新契約・加保',2:'契約變更・退保',3:'壽險/產險理賠',4:'車禍追蹤'};
 const CAT_COLORS = {1:'var(--cat1)',2:'var(--cat2)',3:'var(--cat3)',4:'var(--cat4)'};
-const PRI_NAMES = {urgent:'時效優先',track:'需追蹤',record:'紀錄待辦',submitted:'已送件'};
+const PRI_NAMES = {urgent:'時效優先',track:'待追蹤',record:'記錄待辦',submitted:'已送件'};
 const PRI_CLS   = {urgent:'pri-urgent',track:'pri-track',record:'pri-record',submitted:'pri-submitted'};
-const PRI_SET_DEFAULT = [['urgent','時效優先'],['track','需追蹤'],['record','紀錄待辦']];
+const PRI_SET_DEFAULT = [['urgent','時效優先'],['track','待追蹤'],['record','記錄待辦']];
 const PRI_SET_FILING  = [['submitted','已送件'],['track','待追蹤']];
 function priSetFor(cat) { return (cat==2||cat==3) ? PRI_SET_FILING : PRI_SET_DEFAULT; }
 function priLabel(c) {
   if((c.category==2||c.category==3) && c.priority==='track') return '待追蹤';
   return PRI_NAMES[c.priority] || '';
 }
+function splitClaim(str) {
+  str=(str||'').trim(); if(!str) return ['',''];
+  const m=str.match(/^(.*?)[\s　]+([\d\-+()#\s]{5,})$/);
+  return m ? [m[1].trim(), m[2].trim()] : [str,''];
+}
 function sideInfo(c, side) {
-  if(side==='our') return {
-    insurer: c.ourInsurer ?? c.insurer ?? '',
-    claim:   c.ourClaim ?? [c.claimName, c.claimPhone].filter(Boolean).join('　'),
-    no:      c.ourNo ?? ''
-  };
-  return { insurer: c.theirInsurer ?? '', claim: c.theirClaim ?? '', no: c.theirNo ?? '' };
+  const o = side==='our';
+  const insurer = o ? (c.ourInsurer ?? c.insurer ?? '') : (c.theirInsurer ?? '');
+  let name = o ? c.ourCName : c.theirCName, phone = o ? c.ourCPhone : c.theirCPhone;
+  if(name===undefined && phone===undefined){
+    const old = o ? c.ourClaim : c.theirClaim;
+    if(old!==undefined) [name,phone]=splitClaim(old);
+    else if(o){ name=c.claimName||''; phone=c.claimPhone||''; }
+  }
+  return { insurer, name:name||'', phone:phone||'', no:(o?c.ourNo:c.theirNo)??'' };
 }
 
 let cases = [];
@@ -1441,15 +1528,19 @@ function openView(id) {
   fields.push({label:'截止日期',value:c.deadline||'',mono:true,urgent:c.deadline&&isUrgent(c.deadline),empty:!c.deadline});
   if(isCrash){
     const our = sideInfo(c,'our'), their = sideInfo(c,'their');
-    fields.push({label:'我方保險公司',value:esc(our.insurer),empty:!our.insurer});
-    fields.push({label:'對方保險公司',value:esc(their.insurer),empty:!their.insurer});
-    fields.push({label:'我方理賠人員',value:esc(our.claim),empty:!our.claim});
-    fields.push({label:'對方理賠人員',value:esc(their.claim),empty:!their.claim});
-    fields.push({label:'我方賠案號碼',value:esc(our.no),mono:true,empty:!our.no});
-    fields.push({label:'對方賠案號碼',value:esc(their.no),mono:true,empty:!their.no});
+    const card=(t,cls,x)=>`<div class="vp-side ${cls}">
+      <div class="vp-side-title">${t}</div>
+      <div class="vp-cell"><span>保險公司</span><b class="${x.insurer?'':'empty'}">${x.insurer?esc(x.insurer):'—'}</b></div>
+      <div class="vp-cell-row">
+        <div class="vp-cell"><span>理賠人員</span><b class="${x.name?'':'empty'}">${x.name?esc(x.name):'—'}</b></div>
+        <div class="vp-cell"><span>理賠電話</span><b class="mono ${x.phone?'':'empty'}">${x.phone?esc(x.phone):'—'}</b></div>
+      </div>
+      <div class="vp-cell"><span>賠案號碼</span><b class="mono ${x.no?'':'empty'}">${x.no?esc(x.no):'—'}</b></div>
+    </div>`;
+    fields.push({full:true,html:`<div class="vp-sides">${card('我方','vp-our',our)}${card('對方','vp-their',their)}</div>`});
   }
 
-  document.getElementById('vp-info-grid').innerHTML = fields.map(f=>`
+  document.getElementById('vp-info-grid').innerHTML = fields.map(f=>f.full?f.html:`
     <div class="vp-field">
       <div class="vp-field-label">${f.label}</div>
       <div class="vp-field-value ${f.mono?'mono':''} ${f.urgent?'urgent':''} ${f.empty?'empty':''}">
@@ -1640,13 +1731,15 @@ function openEditModal(id) {
   document.getElementById('f-handle-date').value = c?.handleDate||'';
   document.getElementById('f-deadline').value    = c?.deadline||'';
   document.getElementById('f-accident').value    = c?.accident||'';
-  const _our = c ? sideInfo(c,'our') : {insurer:'',claim:'',no:''};
-  const _their = c ? sideInfo(c,'their') : {insurer:'',claim:'',no:''};
+  const _our = c ? sideInfo(c,'our') : {insurer:'',name:'',phone:'',no:''};
+  const _their = c ? sideInfo(c,'their') : {insurer:'',name:'',phone:'',no:''};
   document.getElementById('f-our-insurer').value   = _our.insurer;
-  document.getElementById('f-our-claim').value     = _our.claim;
+  document.getElementById('f-our-cname').value     = _our.name;
+  document.getElementById('f-our-cphone').value    = _our.phone;
   document.getElementById('f-our-no').value        = _our.no;
   document.getElementById('f-their-insurer').value = _their.insurer;
-  document.getElementById('f-their-claim').value   = _their.claim;
+  document.getElementById('f-their-cname').value   = _their.name;
+  document.getElementById('f-their-cphone').value  = _their.phone;
   document.getElementById('f-their-no').value      = _their.no;
   modalLogs = c ? JSON.parse(JSON.stringify(c.logs||[])) : [];
   modalImgs = c ? JSON.parse(JSON.stringify(c.imgs||[])) : [];
@@ -1769,10 +1862,12 @@ function saveCase() {
     deadline:  document.getElementById('f-deadline').value,
     accident:  document.getElementById('f-accident').value,
     ourInsurer:   document.getElementById('f-our-insurer').value.trim(),
-    ourClaim:     document.getElementById('f-our-claim').value.trim(),
+    ourCName:     document.getElementById('f-our-cname').value.trim(),
+    ourCPhone:    document.getElementById('f-our-cphone').value.trim(),
     ourNo:        document.getElementById('f-our-no').value.trim(),
     theirInsurer: document.getElementById('f-their-insurer').value.trim(),
-    theirClaim:   document.getElementById('f-their-claim').value.trim(),
+    theirCName:   document.getElementById('f-their-cname').value.trim(),
+    theirCPhone:  document.getElementById('f-their-cphone').value.trim(),
     theirNo:      document.getElementById('f-their-no').value.trim(),
     logs:      modalLogs,
     imgs:      modalImgs,
