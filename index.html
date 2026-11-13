@@ -926,6 +926,9 @@
   .td-name { position:relative; }
   .td-name .star-btn { position:absolute; left:-26px; top:50%; margin-top:-12px; padding:0; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
   @media (max-width:768px){ .case-card-name .star-btn { position:static; } }
+  .star-btn:not(.on) { opacity:.7; }
+  .star-btn.on { color:#f2b800; -webkit-text-stroke:0; filter:none; text-shadow:none; }
+  .star-btn.on:hover { color:#f2b800; -webkit-text-stroke:0; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
