@@ -921,6 +921,11 @@
   .star-btn.on { color:var(--cat1); -webkit-text-stroke:1.5px var(--ink); filter:drop-shadow(0 2px 0 var(--ink)); animation:starpop .35s cubic-bezier(.3,1.8,.5,1); }
   @keyframes starpop { 0%{transform:scale(.4) rotate(-40deg)} 100%{transform:none} }
   .case-card-name .star-btn { font-size:24px; padding-right:6px; }
+  .star-btn:not(.on) { -webkit-text-stroke:0; color:#b9b299; font-size:20px; opacity:.85; }
+  .star-btn:not(.on):hover { color:var(--cat1); -webkit-text-stroke:1px var(--ink); opacity:1; }
+  .td-name { position:relative; }
+  .td-name .star-btn { position:absolute; left:-26px; top:50%; margin-top:-12px; padding:0; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+  @media (max-width:768px){ .case-card-name .star-btn { position:static; } }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
