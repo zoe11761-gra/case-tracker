@@ -913,6 +913,14 @@
   @media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important;} }
   .cat-badge.cat-1 { color:var(--ink) !important; background:var(--cat1) !important; }
   @media (max-width:768px){ .topbar a, .topbar button, .topbar [onclick] { color:#fbf8ec; } }
+  .td-name { white-space:nowrap; }
+  .td-name .case-inline { display:inline; }
+  .star-btn { background:none; border:none; cursor:pointer; font-size:22px; line-height:1; padding:0 8px 0 0; vertical-align:middle;
+    color:#c9c2a8; transition:transform .15s cubic-bezier(.3,1.8,.5,1), color .15s; -webkit-text-stroke:1.5px var(--ink); }
+  .star-btn:hover { transform:scale(1.35) rotate(-12deg); color:var(--cat1); }
+  .star-btn.on { color:var(--cat1); -webkit-text-stroke:1.5px var(--ink); filter:drop-shadow(0 2px 0 var(--ink)); animation:starpop .35s cubic-bezier(.3,1.8,.5,1); }
+  @keyframes starpop { 0%{transform:scale(.4) rotate(-40deg)} 100%{transform:none} }
+  .case-card-name .star-btn { font-size:24px; padding-right:6px; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -1347,6 +1355,15 @@ function updateDashboard() {
 }
 
 // ── Inline name·title ──
+function starBtn(c) {
+  return `<button type="button" class="star-btn${c.starred?' on':''}" title="${c.starred?'取消重點標記':'標為重點案件'}" onclick="event.stopPropagation();toggleStar('${c.id}')">${c.starred?'★':'☆'}</button>`;
+}
+function toggleStar(id) {
+  const c = cases.find(x=>x.id===id); if(!c) return;
+  c.starred = !c.starred;
+  save(c);
+  renderAll();
+}
 function caseInline(c) {
   const n=esc(c.name||''), t=esc(c.title||'（未命名）');
   if(!n) return `<span class="case-inline"><span class="c-title">${t}</span></span>`;
@@ -1393,7 +1410,7 @@ function renderPending() {
         <input type="checkbox" class="close-check" ${c.closed?'checked':''} onchange="toggleClose('${c.id}',this.checked)">
       </td>
       <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
-      <td>${caseInline(c)}</td>
+      <td class="td-name">${starBtn(c)}${caseInline(c)}</td>
       <td>${c.handleDate?`<span class="deadline-normal">${c.handleDate}</span>`:'<span class="deadline-empty">—</span>'}</td>
       <td><span class="pri-badge ${PRI_CLS[c.priority]}">${priLabel(c)}</span></td>
       <td>${c.deadline?`<span class="${isUrgent(c.deadline)?'deadline-urgent':'deadline-normal'}">${c.deadline}${isUrgent(c.deadline)?' ⚠':''}</span>`:'<span class="deadline-empty">—</span>'}</td>
@@ -1424,7 +1441,7 @@ function renderClosed() {
         <input type="checkbox" class="close-check" checked onchange="toggleClose('${c.id}',this.checked)">
       </td>
       <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
-      <td>${caseInline(c)}</td>
+      <td class="td-name">${starBtn(c)}${caseInline(c)}</td>
       <td class="deadline-normal">${c.handleDate||'—'}</td>
       <td><span class="pri-badge ${PRI_CLS[c.priority]}">${priLabel(c)}</span></td>
       <td class="deadline-normal">${c.deadline||'—'}</td>
@@ -1477,7 +1494,7 @@ function buildCards(data, isClosed) {
     return `
       <div class="case-card cat-${c.category}${isClosed?' closed-card':''}" onclick="openView('${c.id}')">
         <div class="case-card-top">
-          <div class="case-card-name">${nameHtml}</div>
+          <div class="case-card-name">${starBtn(c)}${nameHtml}</div>
           <input type="checkbox" class="case-card-check"
             ${isClosed?'checked':''}
             onclick="event.stopPropagation()"
@@ -1630,7 +1647,7 @@ function openView(id) {
 
   document.getElementById('vp-cat-dot').style.background = CAT_COLORS[c.category];
   document.getElementById('vp-title').textContent =
-    (c.name||'')+(c.name&&c.title?' · ':'')+(c.title||'案件詳情');
+    (c.starred?'★ ':'')+(c.name||'')+(c.name&&c.title?' · ':'')+(c.title||'案件詳情');
 
   const isCrash = c.category==4;
   let fields = [
