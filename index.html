@@ -1004,7 +1004,7 @@
             <th class="sortable" onclick="sortBy('category')">分類 <i class="sort-icon" id="sort-category">↕</i></th>
             <th class="sortable" onclick="sortBy('name')">待辦事項 <i class="sort-icon" id="sort-name">↕</i></th>
             <th class="sortable" onclick="sortBy('handleDate')">預計處理 <i class="sort-icon" id="sort-handleDate">↕</i></th>
-            <th class="sortable" onclick="sortBy('priority')">優先級 <i class="sort-icon" id="sort-priority">↕</i></th>
+            <th class="sortable" onclick="sortBy('priority')">優先級 <i class="sort-icon" id="sort-priority">↑</i></th>
             <th class="sortable" onclick="sortBy('deadline')">截止日期 <i class="sort-icon" id="sort-deadline">↕</i></th>
             <th class="sortable" onclick="sortBy('accident')">事故日期 <i class="sort-icon" id="sort-accident">↕</i></th>
           </tr>
@@ -1295,7 +1295,7 @@ function sideInfo(c, side) {
 let cases = [];
 let currentId = null;
 let viewId    = null;
-let sortField = null;
+let sortField = 'priority';
 let sortDir   = 1;
 let modalLogs = [];
 let modalImgs = [];
@@ -1380,7 +1380,7 @@ function renderPending() {
   if(sortField) {
     data.sort((a,b) => {
       let va=a[sortField]||'', vb=b[sortField]||'';
-      if(sortField==='priority'){const o={urgent:0,track:1,submitted:2,record:3};va=o[va]??9;vb=o[vb]??9;}
+      if(sortField==='priority'){const o={urgent:0,submitted:1,track:2,record:3};va=o[va]??9;vb=o[vb]??9;}
       if(sortField==='category'){va=parseInt(va);vb=parseInt(vb);}
       return va<vb?-sortDir:va>vb?sortDir:0;
     });
