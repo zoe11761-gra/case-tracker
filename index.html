@@ -126,6 +126,7 @@
   .pri-urgent { background:var(--red-dim); color:var(--red); }
   .pri-track { background:var(--blue-dim); color:var(--blue); }
   .pri-record { background:var(--surface3); color:var(--text3); }
+  .pri-submitted { background:rgba(90,170,122,.12); color:var(--green); }
 
   .deadline-urgent { color:var(--red); font-weight:500; font-family:'DM Mono',monospace; font-size:15px; }
   .deadline-normal { color:var(--text2); font-family:'DM Mono',monospace; font-size:15px; }
@@ -549,6 +550,32 @@
     border-color:var(--green);
     color:var(--green);
   }
+  /* ── segmented buttons (分類 / 優先級) ── */
+  .seg-group { display:flex; gap:8px; }
+  .seg-group.cat-grid { display:grid; grid-template-columns:1fr 1fr; }
+  .seg-btn {
+    flex:1; padding:9px 8px; border-radius:var(--radius);
+    border:1px solid var(--border); background:var(--surface2); color:var(--text2);
+    font-family:'Noto Sans TC',sans-serif; font-size:14px; cursor:pointer;
+    transition:all .15s; white-space:nowrap;
+  }
+  .seg-btn:hover { border-color:var(--border2); color:var(--text); }
+  .seg-btn.active { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); font-weight:500; }
+  .seg-btn.seg-cat-1.active { border-color:var(--cat1); color:var(--cat1); background:rgba(200,169,110,.12); }
+  .seg-btn.seg-cat-2.active { border-color:var(--cat2); color:var(--cat2); background:rgba(90,143,204,.12); }
+  .seg-btn.seg-cat-3.active { border-color:var(--cat3); color:var(--cat3); background:rgba(90,170,122,.12); }
+  .seg-btn.seg-cat-4.active { border-color:var(--cat4); color:var(--cat4); background:rgba(212,128,74,.12); }
+  .seg-btn.seg-pri-urgent.active { border-color:var(--red); color:var(--red); background:var(--red-dim); }
+  .seg-btn.seg-pri-track.active { border-color:var(--blue); color:var(--blue); background:var(--blue-dim); }
+  .seg-btn.seg-pri-submitted.active { border-color:var(--green); color:var(--green); background:rgba(90,170,122,.12); }
+  .triple-row { grid-template-columns:1fr 1.7fr 1fr; }
+  /* ── 車禍：我方 / 對方 ── */
+  .side-row { align-items:start; }
+  .side-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+  .side-card .form-input { background:var(--surface); }
+  .side-title { font-size:14px; font-weight:500; letter-spacing:.04em; }
+  .side-our { color:var(--accent); }
+  .side-their { color:var(--blue); }
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
@@ -703,6 +730,8 @@
   .triple-row .form-group { grid-column:auto; }
   /* ── name + category: stack on mobile ── */
   .name-cat-row { grid-template-columns:1fr !important; }
+  .side-row { grid-template-columns:1fr !important; }
+  .seg-btn { font-size:13px; padding:10px 6px; }
 }
 
 /* Desktop: hide mobile-only elements */
@@ -909,12 +938,13 @@
       </div>
       <div class="form-group">
         <label class="form-label">分類</label>
-        <select class="form-select" id="f-cat" onchange="onCatChange()">
-          <option value="1">新契約・加保</option>
-          <option value="2">契約變更・退保</option>
-          <option value="3">壽險 / 產險理賠</option>
-          <option value="4">車禍追蹤</option>
-        </select>
+        <input type="hidden" id="f-cat" value="1">
+        <div class="seg-group cat-grid" id="cat-btns">
+          <button type="button" class="seg-btn seg-cat-1" data-val="1" onclick="setCat('1')">新契約・加保</button>
+          <button type="button" class="seg-btn seg-cat-2" data-val="2" onclick="setCat('2')">契約變更・退保</button>
+          <button type="button" class="seg-btn seg-cat-3" data-val="3" onclick="setCat('3')">壽險 / 產險理賠</button>
+          <button type="button" class="seg-btn seg-cat-4" data-val="4" onclick="setCat('4')">車禍追蹤</button>
+        </div>
       </div>
     </div>
 
@@ -932,11 +962,8 @@
       </div>
       <div class="form-group">
         <label class="form-label">優先級</label>
-        <select class="form-select" id="f-priority">
-          <option value="urgent">時效優先</option>
-          <option value="track">需追蹤</option>
-          <option value="record">紀錄待辦</option>
-        </select>
+        <input type="hidden" id="f-priority" value="urgent">
+        <div class="seg-group" id="pri-btns"></div>
       </div>
       <div class="form-group">
         <label class="form-label">截止日期（選填）</label>
@@ -951,15 +978,37 @@
           <label class="form-label">事故日期</label>
           <input class="form-input" type="date" id="f-accident" onchange="autoFillDeadline()">
         </div>
-        <div class="form-group">
-          <label class="form-label">保險公司</label>
-          <input class="form-input" id="f-insurer" placeholder="例：富邦產險">
-        </div>
       </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">理賠人員（姓名＋電話）</label>
-          <input class="form-input" id="f-claim-name" placeholder="例：王小明　02-2345-6789">
+      <div class="form-row side-row">
+        <div class="side-card">
+          <div class="side-title side-our">我方</div>
+          <div class="form-group">
+            <label class="form-label">保險公司</label>
+            <input class="form-input" id="f-our-insurer" placeholder="例：富邦產險">
+          </div>
+          <div class="form-group">
+            <label class="form-label">理賠人員（姓名＋電話）</label>
+            <input class="form-input" id="f-our-claim" placeholder="例：王小明　02-2345-6789">
+          </div>
+          <div class="form-group">
+            <label class="form-label">賠案號碼（選填）</label>
+            <input class="form-input" id="f-our-no" placeholder="賠案號碼">
+          </div>
+        </div>
+        <div class="side-card">
+          <div class="side-title side-their">對方</div>
+          <div class="form-group">
+            <label class="form-label">保險公司</label>
+            <input class="form-input" id="f-their-insurer" placeholder="例：國泰產險">
+          </div>
+          <div class="form-group">
+            <label class="form-label">理賠人員（姓名＋電話）</label>
+            <input class="form-input" id="f-their-claim" placeholder="例：李小華　02-2345-6789">
+          </div>
+          <div class="form-group">
+            <label class="form-label">賠案號碼（選填）</label>
+            <input class="form-input" id="f-their-no" placeholder="賠案號碼">
+          </div>
         </div>
       </div>
     </div>
@@ -1025,8 +1074,23 @@ const casesRef = db.ref('cases');
 // ═══════════════════════════════════════════════════
 const CAT_NAMES = {1:'新契約・加保',2:'契約變更・退保',3:'壽險/產險理賠',4:'車禍追蹤'};
 const CAT_COLORS = {1:'var(--cat1)',2:'var(--cat2)',3:'var(--cat3)',4:'var(--cat4)'};
-const PRI_NAMES = {urgent:'時效優先',track:'需追蹤',record:'紀錄待辦'};
-const PRI_CLS   = {urgent:'pri-urgent',track:'pri-track',record:'pri-record'};
+const PRI_NAMES = {urgent:'時效優先',track:'需追蹤',record:'紀錄待辦',submitted:'已送件'};
+const PRI_CLS   = {urgent:'pri-urgent',track:'pri-track',record:'pri-record',submitted:'pri-submitted'};
+const PRI_SET_DEFAULT = [['urgent','時效優先'],['track','需追蹤'],['record','紀錄待辦']];
+const PRI_SET_FILING  = [['submitted','已送件'],['track','待追蹤']];
+function priSetFor(cat) { return (cat==2||cat==3) ? PRI_SET_FILING : PRI_SET_DEFAULT; }
+function priLabel(c) {
+  if((c.category==2||c.category==3) && c.priority==='track') return '待追蹤';
+  return PRI_NAMES[c.priority] || '';
+}
+function sideInfo(c, side) {
+  if(side==='our') return {
+    insurer: c.ourInsurer ?? c.insurer ?? '',
+    claim:   c.ourClaim ?? [c.claimName, c.claimPhone].filter(Boolean).join('　'),
+    no:      c.ourNo ?? ''
+  };
+  return { insurer: c.theirInsurer ?? '', claim: c.theirClaim ?? '', no: c.theirNo ?? '' };
+}
 
 let cases = [];
 let currentId = null;
@@ -1116,7 +1180,7 @@ function renderPending() {
   if(sortField) {
     data.sort((a,b) => {
       let va=a[sortField]||'', vb=b[sortField]||'';
-      if(sortField==='priority'){const o={urgent:0,track:1,record:2};va=o[va]??9;vb=o[vb]??9;}
+      if(sortField==='priority'){const o={urgent:0,track:1,submitted:2,record:3};va=o[va]??9;vb=o[vb]??9;}
       if(sortField==='category'){va=parseInt(va);vb=parseInt(vb);}
       return va<vb?-sortDir:va>vb?sortDir:0;
     });
@@ -1131,7 +1195,7 @@ function renderPending() {
       <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
       <td>${caseInline(c)}</td>
       <td>${c.handleDate?`<span class="deadline-normal">${c.handleDate}</span>`:'<span class="deadline-empty">—</span>'}</td>
-      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
+      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${priLabel(c)}</span></td>
       <td>${c.deadline?`<span class="${isUrgent(c.deadline)?'deadline-urgent':'deadline-normal'}">${c.deadline}${isUrgent(c.deadline)?' ⚠':''}</span>`:'<span class="deadline-empty">—</span>'}</td>
       <td class="td-accident">${c.accident||(c.category==4?'<span style="color:var(--blue)">—</span>':'')}</td>
     </tr>`).join('');
@@ -1162,7 +1226,7 @@ function renderClosed() {
       <td><span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span></td>
       <td>${caseInline(c)}</td>
       <td class="deadline-normal">${c.handleDate||'—'}</td>
-      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span></td>
+      <td><span class="pri-badge ${PRI_CLS[c.priority]}">${priLabel(c)}</span></td>
       <td class="deadline-normal">${c.deadline||'—'}</td>
       <td class="deadline-normal">${c.closedAt||'—'}</td>
     </tr>`).join('');
@@ -1221,7 +1285,7 @@ function buildCards(data, isClosed) {
         </div>
         <div class="case-card-badges">
           <span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span>
-          <span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span>
+          <span class="pri-badge ${PRI_CLS[c.priority]}">${priLabel(c)}</span>
         </div>
         <div class="case-card-meta">
           <div class="case-card-meta-item">
@@ -1369,16 +1433,20 @@ function openView(id) {
     (c.name||'')+(c.name&&c.title?' · ':'')+(c.title||'案件詳情');
 
   const isCrash = c.category==4;
-  const claimContact = [c.claimName, c.claimPhone].filter(Boolean).join('　');
   let fields = [
     {label:'分類',   value:`<span class="cat-badge cat-${c.category}">${CAT_NAMES[c.category]}</span>`},
-    {label:'優先級', value:`<span class="pri-badge ${PRI_CLS[c.priority]}">${PRI_NAMES[c.priority]}</span>`},
+    {label:'優先級', value:`<span class="pri-badge ${PRI_CLS[c.priority]}">${priLabel(c)}</span>`},
   ];
   if(isCrash) fields.push({label:'事故日期',value:c.accident||'',mono:true,empty:!c.accident});
   fields.push({label:'截止日期',value:c.deadline||'',mono:true,urgent:c.deadline&&isUrgent(c.deadline),empty:!c.deadline});
   if(isCrash){
-    fields.push({label:'保險公司',value:c.insurer||'',empty:!c.insurer});
-    fields.push({label:'理賠人員',value:claimContact,empty:!claimContact});
+    const our = sideInfo(c,'our'), their = sideInfo(c,'their');
+    fields.push({label:'我方保險公司',value:esc(our.insurer),empty:!our.insurer});
+    fields.push({label:'對方保險公司',value:esc(their.insurer),empty:!their.insurer});
+    fields.push({label:'我方理賠人員',value:esc(our.claim),empty:!our.claim});
+    fields.push({label:'對方理賠人員',value:esc(their.claim),empty:!their.claim});
+    fields.push({label:'我方賠案號碼',value:esc(our.no),mono:true,empty:!our.no});
+    fields.push({label:'對方賠案號碼',value:esc(their.no),mono:true,empty:!their.no});
   }
 
   document.getElementById('vp-info-grid').innerHTML = fields.map(f=>`
@@ -1572,8 +1640,14 @@ function openEditModal(id) {
   document.getElementById('f-handle-date').value = c?.handleDate||'';
   document.getElementById('f-deadline').value    = c?.deadline||'';
   document.getElementById('f-accident').value    = c?.accident||'';
-  document.getElementById('f-insurer').value     = c?.insurer||'';
-  document.getElementById('f-claim-name').value  = c?.claimName||'';
+  const _our = c ? sideInfo(c,'our') : {insurer:'',claim:'',no:''};
+  const _their = c ? sideInfo(c,'their') : {insurer:'',claim:'',no:''};
+  document.getElementById('f-our-insurer').value   = _our.insurer;
+  document.getElementById('f-our-claim').value     = _our.claim;
+  document.getElementById('f-our-no').value        = _our.no;
+  document.getElementById('f-their-insurer').value = _their.insurer;
+  document.getElementById('f-their-claim').value   = _their.claim;
+  document.getElementById('f-their-no').value      = _their.no;
   modalLogs = c ? JSON.parse(JSON.stringify(c.logs||[])) : [];
   modalImgs = c ? JSON.parse(JSON.stringify(c.imgs||[])) : [];
   document.getElementById('log-date').value  = new Date().toISOString().slice(0,10);
@@ -1592,10 +1666,30 @@ function closeModalOutside(e) { if(e.target===document.getElementById('modal-ove
 function updateCatDot() {
   document.getElementById('modal-cat-dot').style.background = CAT_COLORS[document.getElementById('f-cat').value];
 }
+function setCat(v) {
+  document.getElementById('f-cat').value = v;
+  onCatChange();
+}
+function setPri(v) {
+  document.getElementById('f-priority').value = v;
+  renderPriBtns();
+}
+function renderPriBtns() {
+  const cat = document.getElementById('f-cat').value;
+  const set = priSetFor(cat);
+  const inp = document.getElementById('f-priority');
+  if(!set.some(x=>x[0]===inp.value)) inp.value = (set===PRI_SET_FILING) ? 'track' : 'urgent';
+  document.getElementById('pri-btns').innerHTML = set.map(([v,label])=>
+    `<button type="button" class="seg-btn seg-pri-${v}${inp.value===v?' active':''}" onclick="setPri('${v}')">${label}</button>`
+  ).join('');
+}
 function onCatChange() {
   updateCatDot();
+  const cur = document.getElementById('f-cat').value;
+  document.querySelectorAll('#cat-btns .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.val===String(cur)));
+  renderPriBtns();
   const cf = document.getElementById('crash-fields');
-  document.getElementById('f-cat').value==4 ? cf.classList.add('visible') : cf.classList.remove('visible');
+  cur==4 ? cf.classList.add('visible') : cf.classList.remove('visible');
 }
 function autoFillDeadline() {
   const acc = document.getElementById('f-accident').value;
@@ -1674,8 +1768,12 @@ function saveCase() {
     handleDate:document.getElementById('f-handle-date').value,
     deadline:  document.getElementById('f-deadline').value,
     accident:  document.getElementById('f-accident').value,
-    insurer:   document.getElementById('f-insurer').value.trim(),
-    claimName: document.getElementById('f-claim-name').value.trim(),
+    ourInsurer:   document.getElementById('f-our-insurer').value.trim(),
+    ourClaim:     document.getElementById('f-our-claim').value.trim(),
+    ourNo:        document.getElementById('f-our-no').value.trim(),
+    theirInsurer: document.getElementById('f-their-insurer').value.trim(),
+    theirClaim:   document.getElementById('f-their-claim').value.trim(),
+    theirNo:      document.getElementById('f-their-no').value.trim(),
     logs:      modalLogs,
     imgs:      modalImgs,
   };
