@@ -929,6 +929,9 @@
   .star-btn:not(.on) { opacity:.7; }
   .star-btn.on { color:#f2b800; -webkit-text-stroke:0; filter:none; text-shadow:none; }
   .star-btn.on:hover { color:#f2b800; -webkit-text-stroke:0; }
+  .star-btn:not(.on) { opacity:0; color:#9a937a; -webkit-text-stroke:0; transform:none; }
+  .star-btn:not(.on):hover, .star-btn:not(.on):focus-visible { opacity:.7; color:#9a937a; -webkit-text-stroke:0; transform:none; }
+  @media (hover:none), (max-width:768px){ .star-btn:not(.on) { opacity:.7; } }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
